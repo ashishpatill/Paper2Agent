@@ -2,7 +2,8 @@
   <img src="./logo/paper2agent_logo.png" alt="Paper2Agent Logo" width="600px" />
 </p>
 
-<h3>Paper2Agent: Reimagining Papers As AI Agents, Using AI Agents</h3>
+<h1>Paper2Agent: Reimagining Papers As AI Agents, Using AI Agents</h1>
+
 ## Overview
 `Paper2Agent` is a multi-agent AI system that automatically transforms research papers into interactive AI agents with minimal human input.
 
