@@ -250,9 +250,9 @@ Use Scanpy MCP to preprocess and cluster the single-cell dataset pbmc_all.h5ad.
 ```
 
 ## 🔗 Connectable Paper MCP Servers
-* AlphaGenome: https://Paper2Agent-alphagenome-mcp.hf.space/mcp
-* Scanpy: https://Paper2Agent-scanpy-mcp.hf.space/mcp
-* TISSUE: https://Paper2Agent-tissue-mcp.hf.space/mcp
+* AlphaGenome: https://Paper2Agent-alphagenome-mcp.hf.space
+* Scanpy: https://Paper2Agent-scanpy-mcp.hf.space
+* TISSUE: https://Paper2Agent-tissue-mcp.hf.space
 
 ## 📚 Citation
 ```
