@@ -4,96 +4,17 @@
 
 # Paper2Agent: Reimagining Papers As AI Agents
 
-## Overview
-`Paper2Agent` is a multi-agent AI system that automatically transforms research papers into interactive AI agents with minimal human input.
+## 📖 Overview
+`Paper2Agent` is a multi-agent AI system that automatically transforms research papers into interactive AI agents with minimal human input. Here are some [Demos](#-demos) of the Paper2Agent-generated agent.
 
-## Demos
-Below, we showcase demos of AI agents created by Paper2Agent, illustrating how each agent applies the tools from its source paper to tackle scientific tasks.
-### 🧬 AlphaGenome Agent for Genomic Data Interpretation
-Example query:
-```
-Analyze heart gene expression data with AlphaGenome MCP to identify the causal gene
-for the variant chr11:116837649:T>G, associated with Hypoalphalipoproteinemia.
-```
-
-https://github.com/user-attachments/assets/34aad25b-42b3-4feb-b418-db31066e7f7b
-
-### 🗺️ TISSUE Agent for Uncertainty-Aware Spatial Transcriptomics Analysis
-Example query:
-```
-Calculate the 95% prediction interval for the spatial gene expression prediction of gene Acta2 using TISSUE MCP.
-
-This is my data:
-Spatial count matrix: Spatial_count.txt
-Spatial locations: Locations.txt
-scRNA-seq count matrix: scRNA_count.txt
-```
-
-https://github.com/user-attachments/assets/2c8f6368-fa99-4e6e-b7b5-acc12f741655
-
-### 🧫 Scanpy Agent for Single-Cell Data Preprocessing
-Example query:
-```
-Use Scanpy MCP to preprocess and cluster the single-cell dataset pbmc_all.h5ad.
-```
-
-## 🤖 How to Create a Paper Agent?
-
-To streamline usage, we recommend creating Paper Agents by connecting Paper MCP servers to an AI coding agent, such as [Claude Code](https://www.anthropic.com/claude-code) or the [Google Gemini CLI](https://google-gemini.github.io/gemini-cli/) (it's free with a Google account!).
-We are also actively developing our own base agent, which will be released soon.
-
-#### ⚙️ Using Claude Code
-First, install and set up Claude Code:
-```bash
-npm install -g @anthropic-ai/claude-code
-claude
-```
-After setup, link Claude Code with the Paper MCP server of interest.
-For example, to create an AlphaGenome Agent, run:
-```
-claude mcp add \
---transport http \
-alphagenome \
-https://Paper2Agent-alphagenome-mcp.hf.space/mcp
-
-claude
-```
-✅ You will now have an **AlphaGenome Agent** ready for genomics data interpretation.
-
-## 🔗 Connectable Paper MCP Servers
-* AlphaGenome: https://Paper2Agent-alphagenome-mcp.hf.space/mcp
-* Scanpy: https://Paper2Agent-scanpy-mcp.hf.space/mcp
-* TISSUE: https://Paper2Agent-tissue-mcp.hf.space/mcp
-
-## Quick Start
-The source code of `Paper2Agent` will be released soon.
-
-## Citation
-```
-@misc{miao2025paper2agent,
-      title={Paper2Agent: Reimagining Research Papers As Interactive and Reliable AI Agents}, 
-      author={Jiacheng Miao and Joe R. Davis and Jonathan K. Pritchard and James Zou},
-      year={2025},
-      eprint={2509.06917},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI},
-      url={https://arxiv.org/abs/2509.06917}, 
-}
-```
-
-
-# Paper2Agent 🤖
-
-`Paper2Agent` is a multi-agent AI system that automatically transforms **research paper codebases** into interactive AI agents with minimal human input. Given a GitHub repository containing code from a research paper, Paper2Agent analyzes the codebase, extracts computational tools, and creates a ready-to-use AI agent.
-
-## Quick Start 🚀
+## 🚀 Quick Start 
 
 ### Basic Usage
-Automatically discovers and processes all relevant tutorials in a **research paper codebase repository**:
+Automatically detects and runs all relevant tutorials from a research paper’s codebase.
 
-> **⚠️ Prerequisites**: Complete the [installation & setup](#installation--setup) below before running Paper2Agent.
+> **⚠️ Prerequisites**: Complete the [installation & setup](#️-installation--setup) below before running Paper2Agent.
 >
-> **⏱️ Runtime & Cost**: Processing time varies from 30 minutes to 3+ hours based on codebase complexity. Estimated cost: ~$15 for complex repositories like AlphaGenome (one-time setup cost).
+> **⏱️ Runtime & Cost**: Processing time varies from 30 minutes to 3+ hours based on codebase complexity. Estimated cost: ~$15 for complex repositories like AlphaGenome (one-time cost).
 
 ```bash
 cd Paper2Agent
@@ -167,7 +88,17 @@ bash Paper2Agent.sh \
   --tutorials "https://github.com/scverse/scanpy/blob/main/docs/tutorials/basics/clustering.ipynb"
 ```
 
-## Installation & Setup
+#### AlphaGenome Agent
+Create an AI agent from the [AlphaGenome](https://github.com/google-deepmind/alphagenome) research paper codebase for genomic data interpretation:
+
+```bash
+bash Paper2Agent.sh \
+  --project_dir AlphaGenome_Agent \
+  --github_url https://github.com/google-deepmind/alphagenome \
+  --api <ALPHAGENOME_API_KEY>
+```
+
+## ⚙️ Installation & Setup
 
 ### Prerequisites
 - **Python**: Version 3.10 or higher
@@ -191,12 +122,14 @@ bash Paper2Agent.sh \
    claude
    ```
 
-## Using Your Paper Agent
+## 🤖 How to Create a Paper Agent?
+To streamline usage, we recommend creating Paper Agents by connecting Paper MCP servers to an AI coding agent, such as [Claude Code](https://www.anthropic.com/claude-code) or the [Google Gemini CLI](https://google-gemini.github.io/gemini-cli/) (it's free with a Google account!).
+We are also actively developing our own base agent, which will be released soon.
 
 ### Automatic Launch
 After pipeline completion, Claude Code will automatically open with your new MCP server loaded.
 
-### Manual Launch
+### Manual Launch with Local MCP Server
 To restart your agent later:
 ```bash
 cd <working_dir>
@@ -204,23 +137,35 @@ fastmcp install claude-code <project_dir>/src/<repo_name>_mcp.py \
 --python <project_dir>/<repo_name>-env/bin/python
 ```
 
-### Manual Launch with Remote MCP Server
-To create a paper agent in Claude Code using a remote MCP server, update the script’s first section with your own working directory, MCP name, and server URL:
+### Manual Launch with Remote MCP Server Hosted on Hugging Face
+To create a paper agent in Claude Code with the Paper MCP server of interest, use the following script with your own working directory, MCP name, and server URL:
 ```bash
-launch_remote_mcp.sh \
+bash launch_remote_mcp.sh \
   --working_dir <working_dir> \
   --mcp_name <mcp_name> \
   --mcp_url <remote_mcp_url>
 ```
 
-Example for AlphaGenome agent:
+For example, to create an AlphaGenome Agent, run:
 ```bash
-launch_remote_mcp.sh \
+bash launch_remote_mcp.sh \
   --working_dir analysis_dir \
   --mcp_name alphagenome \
   --mcp_url https://Paper2Agent-alphagenome-mcp.hf.space
 ```
 
+✅ You will now have an **AlphaGenome Agent** ready for genomics data interpretation. You can input the query like:
+```
+Analyze heart gene expression data with AlphaGenome MCP to identify the causal gene
+for the variant chr11:116837649:T>G, associated with Hypoalphalipoproteinemia.
+```
+
+To reuse the AlphaGenome agent, run
+
+```bash
+cd analysis_dir
+claude
+```
 
 ### Verification
 Verify your agent is loaded:
@@ -228,9 +173,10 @@ Verify your agent is loaded:
 claude mcp list
 ```
 
-You should see your repository-specific MCP server listed.
+or use `\mcp` inside Claude Code. You should see your repository-specific MCP server listed.
+<img width="620" height="247" alt="Screenshot 2025-09-15 at 10 36 00 PM" src="https://github.com/user-attachments/assets/e9bc771f-d223-477c-953b-f30220e37633" />
 
-## Output Structure
+## 📁 Output Structure
 
 After completion, your project will contain:
 
@@ -239,7 +185,7 @@ After completion, your project will contain:
 ├── src/
 │   ├── <repo_name>_mcp.py          # Generated MCP server
 │   └── tools/
-│       └── <tutorial_name>.py      # Extracted tools from each tutorial
+│       └── <tutorial_file_name>.py      # Extracted tools from each tutorial
 ├── <repo_name>-env/                # Isolated Python environment
 ├── repo/
 │   └── <repo_name>/                # Cloned repository with original code
@@ -254,13 +200,13 @@ After completion, your project will contain:
 │   ├── executed_notebooks.json     # Notebook execution summary
 │   └── environment-manager_results.md  # Environment setup details
 ├── tests/
-│   ├── code/<tutorial_name>/       # Test code for extracted tools
-│   ├── data/<tutorial_name>/       # Test data files
-│   ├── results/<tutorial_name>/    # Test execution results
+│   ├── code/<tutorial_file_name>/       # Test code for extracted tools
+│   ├── data/<tutorial_file_name>/       # Test data files
+│   ├── results/<tutorial_file_name>/    # Test execution results
 │   └── logs/                       # Test execution logs
 ├── notebooks/
-│   └── <tutorial_name>/
-│       ├── <tutorial_name>_execution_final.ipynb  # Executed tutorial
+│   └── <tutorial_file_name>/
+│       ├── <tutorial_file_name>_execution_final.ipynb  # Executed tutorial
 │       └── images/                 # Generated plots and visualizations
 └── tools/                          # Additional utility scripts
 ```
@@ -270,13 +216,54 @@ After completion, your project will contain:
 | File/Directory | Description |
 |----------------|-------------|
 | `src/<repo_name>_mcp.py` | Main MCP server file that Claude Code loads |
-| `src/tools/<tutorial_name>.py` | Individual tool modules extracted from each tutorial |
+| `src/tools/<tutorial_file_name>.py` | Individual tool modules extracted from each tutorial |
 | `<repo_name>-env/` | Isolated Python environment with all dependencies |
 
-## Key Features
+## 🎬 Demos
+Below, we showcase demos of AI agents created by Paper2Agent, illustrating how each agent applies the tools from its source paper to tackle scientific tasks.
+### 🧬 AlphaGenome Agent for Genomic Data Interpretation
+Example query:
+```
+Analyze heart gene expression data with AlphaGenome MCP to identify the causal gene
+for the variant chr11:116837649:T>G, associated with Hypoalphalipoproteinemia.
+```
 
-- 🤖 **Research Paper Codebase Agent Generation**: Automatically builds ready-to-use AI agents from research paper code repositories
-- 🔧 **MCP Server Creation**: Generates MCP servers from paper codebases for seamless AI agent integration
-- 🔍 **Automated Tool Discovery**: Automatically scans research paper repositories to identify reusable computational tools
-- 📚 **Reliable Tool Implementation**: Extracts, validates, and tests tools using example data from research paper codebases
-- 🐍 **Environment Management**: Automatically sets up isolated Python environments with dependencies from paper repositories
+https://github.com/user-attachments/assets/34aad25b-42b3-4feb-b418-db31066e7f7b
+
+### 🗺️ TISSUE Agent for Uncertainty-Aware Spatial Transcriptomics Analysis
+Example query:
+```
+Calculate the 95% prediction interval for the spatial gene expression prediction of gene Acta2 using TISSUE MCP.
+
+This is my data:
+Spatial count matrix: Spatial_count.txt
+Spatial locations: Locations.txt
+scRNA-seq count matrix: scRNA_count.txt
+```
+
+https://github.com/user-attachments/assets/2c8f6368-fa99-4e6e-b7b5-acc12f741655
+
+### 🧫 Scanpy Agent for Single-Cell Data Preprocessing
+Example query:
+```
+Use Scanpy MCP to preprocess and cluster the single-cell dataset pbmc_all.h5ad.
+```
+
+## 🔗 Connectable Paper MCP Servers
+* AlphaGenome: https://Paper2Agent-alphagenome-mcp.hf.space/mcp
+* Scanpy: https://Paper2Agent-scanpy-mcp.hf.space/mcp
+* TISSUE: https://Paper2Agent-tissue-mcp.hf.space/mcp
+
+## 📚 Citation
+```
+@misc{miao2025paper2agent,
+      title={Paper2Agent: Reimagining Research Papers As Interactive and Reliable AI Agents}, 
+      author={Jiacheng Miao and Joe R. Davis and Jonathan K. Pritchard and James Zou},
+      year={2025},
+      eprint={2509.06917},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2509.06917}, 
+}
+```
+
