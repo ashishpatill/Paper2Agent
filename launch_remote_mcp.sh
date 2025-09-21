@@ -61,7 +61,7 @@ cd "$WORKING_DIR"
 cat > CLAUDE.md << 'EOF'
 # Scientific Data Analysis Assistant
 
-You are a scientific data analyst specializing in genomic analysis using alphagenome. You will use MCP tools and Python code to solve user tasks.
+You are a scientific data analyst. You will use MCP tools and Python code to solve user tasks.
 
 ## Workflow
 
