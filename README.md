@@ -1,291 +1,249 @@
 <p align="center">
-  <img src="./logo/paper2agent_logo.png" alt="Paper2Agent Logo" width="600px" />
+  <img src="./logo/paper2agent_logo.png" alt="Paper2Agent logo" width="600" />
 </p>
 
-# Paper2Agent: Reimagining Papers As AI Agents
+# Paper2Agent Studio
 
-## 📖 Overview
-`Paper2Agent` is a multi-agent AI system that automatically transforms research papers into interactive AI agents with minimal human input. Here are some [Demos](#-demos) of the Paper2Agent-generated agent.
+An open-source fork of [jmiao24/Paper2Agent](https://github.com/jmiao24/Paper2Agent) that keeps the original Claude Code driven paper-to-agent pipeline, and adds a local-first web studio, job orchestration layer, skill graph system, and safer open-source packaging.
 
-## 🚀 Quick Start 
+## Attribution
 
-### Basic Usage
-Automatically detects and runs all relevant tutorials from a research paper’s codebase.
+This project is built on top of the original [Paper2Agent](https://github.com/jmiao24/Paper2Agent) by Jiacheng Miao and contributors.
 
-> **⚠️ Prerequisites**: Complete the [installation & setup](#️-installation--setup) below before running Paper2Agent.
->
-> **⏱️ Runtime & Cost**: Processing time varies from 30 minutes to 3+ hours based on codebase complexity. Estimated cost: ~$15 for complex repositories like AlphaGenome using Claude Sonnet 4 (one-time cost).
+- Upstream repository: [jmiao24/Paper2Agent](https://github.com/jmiao24/Paper2Agent)
+- Upstream author: Jiacheng Miao
+- Upstream license: MIT
 
-```bash
-cd Paper2Agent
+This fork retains the upstream MIT license and preserves the original shell pipeline, prompts, agents, and tooling model, while extending the project with a productized local UI and orchestration experience.
 
-bash Paper2Agent.sh \
-  --project_dir <PROJECT_DIR> \
-  --github_url <GITHUB_URL>
-```
+## What This Fork Adds
 
-### Advanced Usage
+This fork substantially extends the original repository in the following areas.
 
-#### Targeted Tutorial Processing
-Process only specific tutorials by title or URL:
+### 1. Local-first web studio
 
-```bash
-bash Paper2Agent.sh \
-  --project_dir <PROJECT_DIR> \
-  --github_url <GITHUB_URL> \
-  --tutorials <TUTORIALS_URL or TUTORIALS_TITLE>
-```
+Built with Next.js, TypeScript, and shadcn-style UI components.
 
-#### Repository with API Key
-For repositories requiring authentication:
+- Paste a paper URL or upload a PDF.
+- Save model keys locally without committing them.
+- Create jobs from the browser instead of manually driving the shell flow.
+- See recent jobs, persistent inputs, workspace paths, and pipeline state in one place.
 
-```bash
-bash Paper2Agent.sh \
-  --project_dir <PROJECT_DIR> \
-  --github_url <GITHUB_URL> \
-  --api <API_KEY>
-```
+### 2. Background job system
 
-### Parameters
+The repo now includes a real server-side job layer for paper intake and orchestration.
 
-**Required:**
-- `--project_dir <directory>`: Name of the project directory to create
-  - Example: `TISSUE_Agent`
-- `--github_url <url>`: GitHub repository URL to analyze
-  - Example: `https://github.com/sunericd/TISSUE`
+- Job records persist under `.paper2agent/jobs/`.
+- Uploaded PDFs, analysis output, logs, and workspaces are tracked per job.
+- The UI polls job state and shows progress, current stage, and diagnostics.
+- Retry is supported from the browser.
 
-**Optional:**
-- `--tutorials <filter>`: Filter tutorials by title or URL
-  - Example: `"Preprocessing and clustering"` or tutorial URL
-- `--api <key>`: API key for repositories requiring authentication
-  - Example: `your_api_key_here`
-- `--benchmark`: Run benchmark extraction and assessment (default: disabled)
+### 3. Progress-aware pipeline orchestration
 
-### Examples
+The original `Paper2Agent.sh` pipeline is still the execution engine, but this fork wraps it with a richer controller.
 
-#### TISSUE Agent
-Create an AI agent from the [TISSUE](https://github.com/sunericd/TISSUE) research paper codebase for uncertainty-calibrated single-cell spatial transcriptomics analysis:
+- Live pipeline stage parsing from shell output.
+- Stalled-job detection in the UI.
+- Pause, resume, and stop controls for active jobs.
+- Better failure diagnosis for auth, clone, disk, tutorial, and pipeline issues.
 
-```bash
-bash Paper2Agent.sh \
-  --project_dir TISSUE_Agent \
-  --github_url https://github.com/sunericd/TISSUE
-```
+### 4. Paper intake with provider-backed analysis
 
-#### Scanpy Agent for Preprocessing and Clustering
-Create an AI agent from the [Scanpy](https://github.com/scverse/scanpy) research paper codebase for single-cell analysis preprocessing and clustering:
+Before launching the original pipeline, the app analyzes the submitted paper.
 
-```bash
-# Filter by tutorial title
-bash Paper2Agent.sh \
-  --project_dir Scanpy_Agent \
-  --github_url https://github.com/scverse/scanpy \
-  --tutorials "Preprocessing and clustering"
+- Accepts either URL or PDF input.
+- Extracts paper text server-side.
+- Uses Gemini or OpenRouter for paper summarization and repo inference.
+- Persists analysis artifacts for each job.
 
-# Filter by tutorial URL
-bash Paper2Agent.sh \
-  --project_dir Scanpy_Agent \
-  --github_url https://github.com/scverse/scanpy \
-  --tutorials "https://github.com/scverse/scanpy/blob/main/docs/tutorials/basics/clustering.ipynb"
-```
+### 5. Skill graph system for Codex and Claude Code
 
-#### AlphaGenome Agent
-Create an AI agent from the [AlphaGenome](https://github.com/google-deepmind/alphagenome) research paper codebase for genomic data interpretation:
+This fork models the workflow as reusable skills instead of a flat pipeline.
 
-```bash
-bash Paper2Agent.sh \
-  --project_dir AlphaGenome_Agent \
-  --github_url https://github.com/google-deepmind/alphagenome \
-  --api <ALPHAGENOME_API_KEY>
-```
+- A typed skill catalog and dependency graph drive the UI.
+- Codex skill packs live in `codex-skills/`.
+- Claude specialists live in `.claude/agents/`.
+- The UI shows which capabilities are core, recommended, or optional for a paper.
 
-## ⚙️ Installation & Setup
+### 6. Open-source hygiene and safer local runtime behavior
 
-### Prerequisites
-- **Python**: Version 3.10 or higher
-- **Claude Code**: Install following instructions at [anthropic.com/claude-code](https://www.anthropic.com/claude-code)
+- Runtime data is isolated under `.paper2agent/` and gitignored.
+- `.env.local`, local Claude settings, uploads, logs, workspaces, and saved secrets are excluded from source control.
+- PDF intake has size and timeout guardrails.
+- The pipeline no longer over-reports success for skipped benchmark steps or swallowed coverage failures.
 
-### Installation Steps
-1. **Clone the Paper2Agent Repository**
-   ```bash
-   git clone https://github.com/jmiao24/Paper2Agent.git
-   cd Paper2Agent
-   ```
+### 7. Local feasibility preflight
 
-2. **Install Python Dependencies**
-   ```bash
-   pip install fastmcp
-   ```
+This fork adds an early implementability check before launching the full pipeline.
 
-3. **Install and Configure Claude Code**
-   ```bash
-   npm install -g @anthropic-ai/claude-code
-   claude
-   ```
+- Detects obvious out-of-scope repos that require large GPU clusters, TPU pods, hosted-only services, or unavailable proprietary components.
+- Marks those jobs as `not_implementable` early instead of wasting a full local run.
+- Allows risky but still plausible repos to continue with warnings.
 
-## 🤖 How to Create a Paper Agent?
-To streamline usage, we recommend creating Paper Agents by connecting Paper MCP servers to an AI coding agent, such as [Claude Code](https://www.anthropic.com/claude-code) or the [Google Gemini CLI](https://google-gemini.github.io/gemini-cli/) (it's free with a Google account!).
-We are also actively developing our own base agent, which will be released soon.
+## What Stays From Upstream
 
-### Automatic Launch
-After pipeline completion, Claude Code will automatically open with your new MCP server loaded.
+This fork deliberately keeps the original Paper2Agent execution model intact.
 
-### Manual Launch with Local MCP Server
-To restart your agent later:
-```bash
-cd <working_dir>
-fastmcp install claude-code <project_dir>/src/<repo_name>_mcp.py \
---python <project_dir>/<repo_name>-env/bin/python
-```
+- `Paper2Agent.sh` remains the main pipeline entrypoint.
+- The original `scripts/`, `tools/`, `agents/`, `prompts/`, and `templates/` directories remain central to agent generation.
+- Claude Code is still the main coding/orchestration runtime for the heavy implementation steps.
+- The final output is still a generated MCP-capable agent workspace built from the target repository.
 
-### Manual Launch with Remote MCP Server Hosted on Hugging Face
-To create a paper agent in Claude Code with the Paper MCP server of interest, use the following script with your own working directory, MCP name, and server URL:
-```bash
-bash launch_remote_mcp.sh \
-  --working_dir <working_dir> \
-  --mcp_name <mcp_name> \
-  --mcp_url <remote_mcp_url>
-```
+## Architecture
 
-For example, to create an AlphaGenome Agent, run:
-```bash
-bash launch_remote_mcp.sh \
-  --working_dir analysis_dir \
-  --mcp_name alphagenome \
-  --mcp_url https://Paper2Agent-alphagenome-mcp.hf.space
-```
+There are now two layers in this repository:
 
-✅ You will now have an **AlphaGenome Agent** ready for genomics data interpretation. You can input the query like:
-```
-Analyze heart gene expression data with AlphaGenome MCP to identify the causal gene
-for the variant chr11:116837649:T>G, associated with Hypoalphalipoproteinemia.
-```
+1. The original research pipeline
+   - `Paper2Agent.sh`
+   - `scripts/`
+   - `tools/`
+   - `agents/`
+   - `prompts/`
+   - `templates/`
 
-To reuse the AlphaGenome agent, run
+2. The new application layer
+   - `app/`
+   - `components/`
+   - `lib/server/`
+   - `lib/skills/`
+   - `scripts/run-paper-job.ts`
+
+The application layer performs paper intake, repo inference, safety checks, job orchestration, and UI state management. The original pipeline layer performs environment setup, tutorial execution, tool extraction, MCP wrapping, and evaluation.
+
+## Quick Start
+
+### Requirements
+
+- Node.js 20+
+- npm
+- Python 3.10+
+- `claude` CLI installed and authenticated
+
+### Install
 
 ```bash
-cd analysis_dir
-claude
+npm install
 ```
 
-### Verification
-Verify your agent is loaded:
+### Run the app
+
 ```bash
-claude mcp list
+./run-app.sh dev
 ```
 
-or use `\mcp` inside Claude Code. You should see your repository-specific MCP server listed.
-<img width="620" height="247" alt="Screenshot 2025-09-15 at 10 36 00 PM" src="https://github.com/user-attachments/assets/e9bc771f-d223-477c-953b-f30220e37633" />
+Then open [http://localhost:3000](http://localhost:3000).
 
-## 📁 Output Structure
+### Alternative commands
 
-After completion, your project will contain:
-
+```bash
+./run-app.sh install
+./run-app.sh build
+./run-app.sh start
+./run-app.sh check
 ```
-<project_dir>/
+
+## Model and key configuration
+
+This fork currently supports:
+
+- Gemini
+- OpenRouter
+
+Keys can be provided in either of these ways:
+
+1. Through the web UI
+   - Saved locally to `.paper2agent/local/secrets.json`
+   - Never sent back to the browser after save
+
+2. Through environment variables
+   - Use `.env.example` as a template
+
+Neither `.env.local` nor `.paper2agent/` is committed.
+
+## Claude Code requirement
+
+The web app uses Gemini/OpenRouter for paper analysis, but the original Paper2Agent implementation pipeline still relies on the `claude` CLI for tutorial execution, extraction, and orchestration.
+
+That means a successful end-to-end run requires:
+
+- provider keys for the intake layer
+- a valid `claude` CLI login for the implementation layer
+
+## Typical workflow
+
+1. Open the studio UI.
+2. Paste a paper URL or upload a PDF.
+3. Optionally set a repository override, project name, and notes.
+4. Save provider keys locally.
+5. Start a job.
+6. The app analyzes the paper, infers or uses the repo, runs feasibility checks, and then launches `Paper2Agent.sh`.
+7. If successful, the generated workspace appears under `.paper2agent/workspaces/<job>/`.
+
+## Output
+
+A successful run produces a workspace like:
+
+```text
+.paper2agent/workspaces/<project>-<job-id>/
 ├── src/
-│   ├── <repo_name>_mcp.py          # Generated MCP server
+│   ├── <repo_name>_mcp.py
 │   └── tools/
-│       └── <tutorial_file_name>.py      # Extracted tools from each tutorial
-├── <repo_name>-env/                # Isolated Python environment
-├── repo/
-│   └── <repo_name>/                # Cloned repository with original code
-├── claude_outputs/
-│   ├── step1_output.json           # Tutorial scanner results
-│   ├── step2_output.json           # Tutorial executor results
-│   ├── step3_output.json           # Tool extraction results
-│   ├── step4_output.json           # MCP server creation results
-│   └── step5_output.json           # Coverage and quality analysis results
-├── reports/
-│   ├── tutorial-scanner.json       # Tutorial discovery analysis
-│   ├── tutorial-scanner-include-in-tools.json  # Tools inclusion decisions
-│   ├── executed_notebooks.json     # Notebook execution summary
-│   ├── environment-manager_results.md  # Environment setup details
-│   ├── coverage/                   # Code coverage analysis reports
-│   │   ├── coverage.xml            # XML coverage report (CI/CD format)
-│   │   ├── coverage.json           # JSON coverage report (machine-readable)
-│   │   ├── coverage_summary.txt     # Text summary of coverage metrics
-│   │   ├── coverage_report.md       # Detailed markdown coverage analysis
-│   │   ├── pytest_output.txt       # Full pytest execution output
-│   │   └── htmlcov/                # HTML coverage dashboard (interactive)
-│   ├── quality/                    # Code quality analysis reports
-│   │   └── pylint/                 # Pylint code style analysis
-│   │       ├── pylint_report.txt   # Full pylint analysis output
-│   │       ├── pylint_scores.txt   # Per-file pylint scores summary
-│   │       └── pylint_issues.md    # Detailed style issues breakdown
-│   └── coverage_and_quality_report.md  # Combined coverage + quality report
 ├── tests/
-│   ├── code/<tutorial_file_name>/       # Test code for extracted tools
-│   ├── data/<tutorial_file_name>/       # Test data files
-│   ├── results/<tutorial_file_name>/    # Test execution results
-│   └── logs/                       # Test execution logs
-├── notebooks/
-│   └── <tutorial_file_name>/
-│       ├── <tutorial_file_name>_execution_final.ipynb  # Executed tutorial
-│       └── images/                 # Generated plots and visualizations
-└── tools/                          # Additional utility scripts
+├── reports/
+├── repo/
+├── claude_outputs/
+└── <repo_name>-env/
 ```
 
-### Key Output Files and Directories
+You will also see:
 
-| File/Directory | Description |
-|----------------|-------------|
-| `src/<repo_name>_mcp.py` | Main MCP server file that Claude Code loads |
-| `src/tools/<tutorial_file_name>.py` | Individual tool modules extracted from each tutorial |
-| `<repo_name>-env/` | Isolated Python environment with all dependencies |
-| `reports/coverage/` | Code coverage analysis reports (pytest-cov) |
-| `reports/quality/pylint/` | Code style analysis reports (pylint) |
-| `reports/coverage_and_quality_report.md` | Combined coverage + quality metrics report |
-| `reports/benchmark_questions.csv` | (Optional) Benchmark questions extracted from the executed tutorials (if `--benchmark` used) |
-| `reports/benchmark_results.csv` | (Optional) Benchmark assessment results of the final agent and MCP tools (if `--benchmark` used) |
+- job metadata in `.paper2agent/jobs/<job-id>/job.json`
+- logs in `.paper2agent/logs/<job-id>.log`
+- uploaded PDFs in `.paper2agent/uploads/<job-id>/`
 
-## 🎬 Demos
-Below, we showcase demos of AI agents created by Paper2Agent, illustrating how each agent applies the tools from its source paper to tackle scientific tasks.
-### 🧬 AlphaGenome Agent for Genomic Data Interpretation
-Example query:
-```
-Analyze heart gene expression data with AlphaGenome MCP to identify the causal gene
-for the variant chr11:116837649:T>G, associated with Hypoalphalipoproteinemia.
-```
+## Repository map
 
-https://github.com/user-attachments/assets/34aad25b-42b3-4feb-b418-db31066e7f7b
+- `app/`: Next.js App Router pages and API routes
+- `components/`: studio UI and shared components
+- `lib/server/`: jobs, pipeline, secrets, intake, and diagnostics
+- `lib/skills/`: skill catalog and graph logic
+- `codex-skills/`: installable Codex skill packs
+- `.claude/agents/`: Claude Code specialists for this repo
+- `.claude/commands/`: project commands for Claude Code
+- `Paper2Agent.sh`: original shell pipeline entrypoint
+- `scripts/`: shell pipeline steps plus app helper scripts
 
-### 🗺️ TISSUE Agent for Uncertainty-Aware Spatial Transcriptomics Analysis
-Example query:
-```
-Calculate the 95% prediction interval for the spatial gene expression prediction of gene Acta2 using TISSUE MCP.
+## Open-source safety notes
 
-This is my data:
-Spatial count matrix: Spatial_count.txt
-Spatial locations: Locations.txt
-scRNA-seq count matrix: scRNA_count.txt
-```
+This repo is prepared for public use with the assumption that the following remain local-only:
 
-https://github.com/user-attachments/assets/2c8f6368-fa99-4e6e-b7b5-acc12f741655
+- `.paper2agent/`
+- `.env.local`
+- `.claude/settings.local.json`
+- generated workspaces
+- uploaded PDFs
+- saved provider keys
 
-### 🧫 Scanpy Agent for Single-Cell Data Preprocessing
-Example query:
-```
-Use Scanpy MCP to preprocess and cluster the single-cell dataset pbmc_all.h5ad.
-```
+If you fork or contribute, do not commit those files.
 
-## 🔗 Connectable Paper MCP Servers
-* AlphaGenome: https://Paper2Agent-alphagenome-mcp.hf.space
-* Scanpy: https://Paper2Agent-scanpy-mcp.hf.space
-* TISSUE: https://Paper2Agent-tissue-mcp.hf.space
+## Developer notes
 
-## 📊 Benchmarking for Paper2Agent
-For comprehensive benchmarking results and evaluation metrics of Paper2Agent, please refer to our dedicated benchmarking repository: [Paper2AgentBench](https://github.com/jmiao24/Paper2AgentBench).
-## 📚 Citation
-```
-@misc{miao2025paper2agent,
-      title={Paper2Agent: Reimagining Research Papers As Interactive and Reliable AI Agents}, 
-      author={Jiacheng Miao and Joe R. Davis and Jonathan K. Pritchard and James Zou},
-      year={2025},
-      eprint={2509.06917},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI},
-      url={https://arxiv.org/abs/2509.06917}, 
-}
+Useful commands:
+
+```bash
+npm run dev
+npm run build
+npm run lint
+npm run job:run -- <job-id>
+bash scripts/install-codex-skills.sh
+bash scripts/setup-ai-tooling.sh
 ```
 
+Project guidance for coding agents:
+
+- [AGENTS.md](./AGENTS.md)
+- [CLAUDE.md](./CLAUDE.md)
+
+## License
+
+This repository remains licensed under the MIT License. See [LICENSE](./LICENSE).

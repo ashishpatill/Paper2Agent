@@ -29,7 +29,7 @@ fi
 
 if [[ ! -f "$INPUT_CSV" ]]; then
     echo "05.7: No benchmark questions found at $INPUT_CSV. Skipping." >&2
-    exit 0
+    exit 10
 fi
 
 # 1. Install MCP Server

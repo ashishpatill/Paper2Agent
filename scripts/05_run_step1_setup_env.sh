@@ -36,4 +36,22 @@ envsubst < "$STEP1_PROMPT" | claude \
   --dangerously-skip-permissions \
   -p - > "$STEP_OUT"
 
+if rg -qi 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
+  echo "05: ERROR - step 1 asked for clarification instead of executing the tutorial scan" >&2
+  exit 1
+fi
+
+SCAN_JSON="$MAIN_DIR/reports/tutorial-scanner.json"
+INCLUDE_JSON="$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json"
+
+if [[ ! -s "$SCAN_JSON" || ! -s "$INCLUDE_JSON" ]]; then
+  echo "05: ERROR - step 1 did not produce tutorial scanner reports for repo/${repo_name}" >&2
+  exit 1
+fi
+
+if rg -qi 'AlphaPOP|score_batch|alphagenome|templates/' "$SCAN_JSON" "$INCLUDE_JSON"; then
+  echo "05: ERROR - step 1 output referenced template/example assets instead of the target repository" >&2
+  exit 1
+fi
+
 touch "$MARKER"

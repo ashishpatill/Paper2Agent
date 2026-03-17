@@ -24,10 +24,30 @@ if [[ -f "$MARKER" ]]; then
   exit 0
 fi
 
+if [[ ! -s "$MAIN_DIR/reports/executed_notebooks.json" ]]; then
+  echo "05: ERROR - step 3 requires reports/executed_notebooks.json from step 2" >&2
+  exit 1
+fi
+
 export api_key="$api_key"
 
 envsubst < "$STEP3_PROMPT" | claude --model claude-sonnet-4-20250514 \
   --verbose --output-format stream-json \
   --dangerously-skip-permissions -p - > "$STEP_OUT"
+
+if rg -qi 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
+  echo "05: ERROR - step 3 asked for clarification instead of extracting tools" >&2
+  exit 1
+fi
+
+if ! find "$MAIN_DIR/src/tools" -maxdepth 1 -type f -name "*.py" | grep -q .; then
+  echo "05: ERROR - step 3 completed without generating any source files in src/tools/" >&2
+  exit 1
+fi
+
+if rg -qi 'AlphaPOP|score_batch|alphagenome|templates/' "$MAIN_DIR/src" "$MAIN_DIR/tests" "$STEP_OUT"; then
+  echo "05: ERROR - step 3 generated template/example content instead of paper-specific source files" >&2
+  exit 1
+fi
 
 touch "$MARKER"

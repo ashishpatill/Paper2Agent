@@ -23,10 +23,37 @@ if [[ -f "$MARKER" ]]; then
   exit 0
 fi
 
+if [[ ! -s "$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json" ]]; then
+  echo "05: ERROR - step 2 requires reports/tutorial-scanner-include-in-tools.json from step 1" >&2
+  exit 1
+fi
+
+if [[ "$(jq '.tutorials | length' "$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json" 2>/dev/null || echo 0)" -eq 0 ]]; then
+  echo "05: ERROR - target repository has no runnable tutorials to execute. Stopping instead of falling back to generic templates." >&2
+  exit 1
+fi
+
 export api_key="$api_key"
 
 envsubst < "$STEP2_PROMPT" | claude --model claude-sonnet-4-20250514 \
   --verbose --output-format stream-json \
   --dangerously-skip-permissions -p - > "$STEP_OUT"
+
+if rg -qi 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
+  echo "05: ERROR - step 2 asked for clarification instead of executing tutorials" >&2
+  exit 1
+fi
+
+EXECUTED_JSON="$MAIN_DIR/reports/executed_notebooks.json"
+
+if [[ ! -s "$EXECUTED_JSON" ]]; then
+  echo "05: ERROR - step 2 did not produce reports/executed_notebooks.json" >&2
+  exit 1
+fi
+
+if rg -qi 'AlphaPOP|score_batch|alphagenome|templates/' "$EXECUTED_JSON" "$STEP_OUT"; then
+  echo "05: ERROR - step 2 output referenced template/example assets instead of the target repository" >&2
+  exit 1
+fi
 
 touch "$MARKER"

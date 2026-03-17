@@ -27,4 +27,14 @@ claude --model claude-sonnet-4-20250514 \
   --verbose --output-format stream-json \
   --dangerously-skip-permissions -p - < "$STEP4_PROMPT" > "$STEP_OUT"
 
+if rg -qi 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
+  echo "05: ERROR - step 4 asked for clarification instead of packaging an MCP server" >&2
+  exit 1
+fi
+
+if ! find "$MAIN_DIR/src" -maxdepth 1 -type f -name "*_mcp.py" | grep -q .; then
+  echo "05: ERROR - step 4 completed without generating an MCP server file in src/" >&2
+  exit 1
+fi
+
 touch "$MARKER"

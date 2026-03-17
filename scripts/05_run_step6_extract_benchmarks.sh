@@ -30,7 +30,7 @@ fi
 
 if [[ ! -f "$EXECUTED_NOTEBOOKS_JSON" ]]; then
     echo "05.6: No executed notebooks report found. Skipping." >&2
-    exit 0
+    exit 10
 fi
 
 # Read executed notebooks list
@@ -110,6 +110,11 @@ for tutorial_name in $tutorial_names; do
         --output "$OUTPUT_CSV"
         
 done
+
+if [[ ! -f "$OUTPUT_CSV" ]]; then
+    echo "05.6: No benchmark questions were extracted. Skipping benchmark review." >&2
+    exit 10
+fi
 
 # Global Review Step
 echo "05.6: Running global benchmark review..."
