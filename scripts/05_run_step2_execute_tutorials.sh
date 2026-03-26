@@ -10,6 +10,7 @@ fi
 SCRIPT_DIR="$1"
 MAIN_DIR="$2"
 api_key="${3:-}"
+source "$SCRIPT_DIR/scripts/pipeline_helpers.sh"
 STEP_OUT="$MAIN_DIR/claude_outputs/step2_output.json"
 PIPELINE_DIR="$MAIN_DIR/.pipeline"
 MARKER="$PIPELINE_DIR/05_step2_done"
@@ -29,17 +30,20 @@ if [[ ! -s "$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json" ]]; then
 fi
 
 if [[ "$(jq '.tutorials | length' "$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json" 2>/dev/null || echo 0)" -eq 0 ]]; then
-  echo "05: ERROR - target repository has no runnable tutorials to execute. Stopping instead of falling back to generic templates." >&2
-  exit 1
+  echo "05: SKIP - target repository has no runnable tutorials to execute. Step 3 will extract tools directly from source code." >&2
+  exit 10
 fi
 
 export api_key="$api_key"
 
-envsubst < "$STEP2_PROMPT" | claude --model claude-sonnet-4-20250514 \
+ENVSUBST_BIN="$(require_cli envsubst)"
+CLAUDE_BIN="$(require_cli claude)"
+
+"$ENVSUBST_BIN" < "$STEP2_PROMPT" | "$CLAUDE_BIN" --model claude-sonnet-4-20250514 \
   --verbose --output-format stream-json \
   --dangerously-skip-permissions -p - > "$STEP_OUT"
 
-if rg -qi 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
+if search_text 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
   echo "05: ERROR - step 2 asked for clarification instead of executing tutorials" >&2
   exit 1
 fi
@@ -51,7 +55,7 @@ if [[ ! -s "$EXECUTED_JSON" ]]; then
   exit 1
 fi
 
-if rg -qi 'AlphaPOP|score_batch|alphagenome|templates/' "$EXECUTED_JSON" "$STEP_OUT"; then
+if search_text 'AlphaPOP|score_batch|alphagenome|templates/' "$EXECUTED_JSON" "$STEP_OUT"; then
   echo "05: ERROR - step 2 output referenced template/example assets instead of the target repository" >&2
   exit 1
 fi

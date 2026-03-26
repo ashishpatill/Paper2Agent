@@ -110,7 +110,7 @@ export async function diagnosePipelineFailure(options: {
     const repoPath = path.join(repoRoot, firstRepo.name);
     const tutorialCount = await countTutorialCandidates(repoPath);
     if (tutorialCount === 0) {
-      return "The detected repository does not appear to contain runnable tutorials, notebooks, or example scripts. Paper2Agent currently depends on those surfaces to extract tools.";
+      return "The detected repository does not appear to contain runnable tutorials, notebooks, or example scripts. The pipeline will attempt tool extraction directly from the source code, but this may fail if the code is not executable in the local environment.";
     }
   }
 

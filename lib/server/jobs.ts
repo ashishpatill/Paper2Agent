@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { ensureAppDirectories, jobsRoot } from "./fs";
@@ -74,7 +74,10 @@ export async function updateJob(jobId: string, updater: (job: JobRecord) => JobR
     updatedAt: new Date().toISOString()
   });
 
-  await writeFile(jobFile(jobId), JSON.stringify(next, null, 2), "utf8");
+  const target = jobFile(jobId);
+  const tmp = `${target}.tmp`;
+  await writeFile(tmp, JSON.stringify(next, null, 2), "utf8");
+  await rename(tmp, target);
   return next;
 }
 
@@ -108,10 +111,6 @@ export async function reconcileJob(jobId: string) {
     strict: false
   }).catch(() => undefined);
 
-  if (!diagnosis) {
-    return job;
-  }
-
   return updateJob(jobId, (current) => ({
     ...current,
     status: "failed",
@@ -119,7 +118,7 @@ export async function reconcileJob(jobId: string) {
     resumeStatus: undefined,
     workspacePath: current.workspacePath || pipelinePaths.workspacePath,
     logPath: current.logPath || pipelinePaths.logPath,
-    error: diagnosis
+    error: diagnosis || "The pipeline worker stopped responding and did not complete."
   }));
 }
 

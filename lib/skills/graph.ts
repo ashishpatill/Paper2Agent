@@ -8,6 +8,7 @@ function normalizeText(values: string[]) {
 
 function levelReason(id: string, analysis: PaperAnalysis, hasRepositoryUrl: boolean): string {
   const capabilityText = normalizeText(analysis.capabilities);
+  const hasResults = analysis.reported_results && analysis.reported_results.length > 0;
 
   switch (id) {
     case "paper-intake":
@@ -22,6 +23,20 @@ function levelReason(id: string, analysis: PaperAnalysis, hasRepositoryUrl: bool
       return "Paper2Agent builds from runnable examples, so tutorial execution stays on the critical path.";
     case "tool-extraction":
       return "Reusable agent tools are the main artifact this product produces.";
+    case "gap-analysis":
+      return "Gap analysis routes the pipeline between tutorial extraction and paper implementation tracks.";
+    case "paper-coder":
+      return hasResults
+        ? "The paper reports specific experimental results that need implementation to reproduce."
+        : "Generates experiment code for capabilities not covered by tutorials.";
+    case "experiment-runner":
+      return "Executes generated experiment code safely with structured metric capture.";
+    case "results-comparator":
+      return hasResults
+        ? "The paper has reported results that need validation against implementation outputs."
+        : "Compares experiment outputs to expected behavior when reported results are available.";
+    case "fix-loop":
+      return "Iteratively refines implementation when results diverge from the paper's findings.";
     case "mcp-packaging":
       return "Packaging extracted tools as MCP is what makes them portable to Codex and Claude Code.";
     case "benchmark-evaluation":
@@ -40,6 +55,8 @@ function levelReason(id: string, analysis: PaperAnalysis, hasRepositoryUrl: bool
 function chooseLevel(id: string, analysis: PaperAnalysis, hasRepositoryUrl: boolean): SkillLevel {
   const baseLevel = defaultSkillLevels[id] ?? "optional";
   const capabilityText = normalizeText(analysis.capabilities);
+  const hasResults = analysis.reported_results && analysis.reported_results.length > 0;
+  const hasDatasets = analysis.datasets_required && analysis.datasets_required.length > 0;
 
   if (id === "repo-recon" && !hasRepositoryUrl) {
     return "core";
@@ -58,6 +75,15 @@ function chooseLevel(id: string, analysis: PaperAnalysis, hasRepositoryUrl: bool
     id === "coverage-quality" &&
     (capabilityText.includes("test") || capabilityText.includes("validation"))
   ) {
+    return "core";
+  }
+
+  // Promote implementation track skills when the paper has reported results or datasets
+  if (hasResults && ["paper-coder", "experiment-runner", "results-comparator", "fix-loop"].includes(id)) {
+    return "core";
+  }
+
+  if (hasDatasets && id === "paper-coder") {
     return "core";
   }
 
@@ -114,6 +140,8 @@ export function buildDefaultSkillGraph() {
     projectSlug: "paper2agent-workflow",
     confidence: "high",
     capabilities: ["tutorial execution", "tool extraction", "mcp packaging", "validation"],
+    reported_results: [],
+    datasets_required: [],
     suggestedQuestions: [],
     setupNotes: []
   };

@@ -12,7 +12,7 @@ Target paper:
 Source-of-truth rules:
 - Only extract tools from notebooks, scripts, and execution artifacts derived from `repo/${github_repo_name}` for this paper.
 - Never use `templates/`, `AlphaPOP`, `score_batch`, `alphagenome`, or any unrelated example assets.
-- If no paper-specific executed notebooks exist, fail clearly instead of producing generic scaffolding.
+- If `reports/executed_notebooks.json` does not exist, switch to **code-only extraction mode**: extract tools directly from the Python source files in `repo/${github_repo_name}/` (treating each significant `.py` file as the tool source). Do NOT fail; do NOT use generic scaffolding.
 
 ## Role
 Orchestrator agent that coordinates sequential tool extraction and testing by managing specialized subagents to transform tutorial notebooks into production-ready, tested function libraries.
@@ -25,10 +25,19 @@ Convert executed tutorial notebooks into reusable tools with comprehensive test 
 - **test-verifier-improver**: Comprehensive testing specialist that creates, executes, and iteratively improves test suites until 100% pass rate
 
 ## Input Requirements
-- `reports/executed_notebooks.json`: List of successfully executed tutorials requiring tool extraction
+- `reports/executed_notebooks.json` *(optional)*: List of successfully executed tutorials requiring tool extraction. When absent, use code-only extraction mode.
 - `${github_repo_name}-env`: Pre-configured Python environment with dependencies
-- `notebooks/`: Directory containing executed tutorial notebooks and images
+- `notebooks/`: Directory containing executed tutorial notebooks and images (may be empty in code-only mode)
 - `api_key`: Optional API key for testing tools requiring external API access: "${api_key}"
+
+### Code-Only Extraction Mode (when `executed_notebooks.json` is absent)
+When `reports/executed_notebooks.json` does not exist, this means the repository had no runnable tutorials.
+In this mode:
+- Scan `repo/${github_repo_name}/` for significant Python source files (e.g., `main.py`, core modules, utilities).
+- Treat each meaningful Python source file as the tool source instead of an executed notebook.
+- Extract reusable functions and wrap them as MCP tools using `tutorial-tool-extractor-implementor`, pointing it at the source files.
+- Create a synthetic `reports/executed_notebooks.json` listing the source files used, so downstream steps are aware.
+- Continue with testing phase as normal.
 
 ## Expected Outputs
 ```
@@ -56,8 +65,8 @@ tests/logs/${tutorial_file_name}_test.md                  # Final comprehensive 
 ### Phase 1: Parallel Tool Extraction & Implementation
 
 **Pre-Extraction Validation:**
-- Verify `reports/executed_notebooks.json` contains valid tutorial entries
-- Confirm all referenced notebook files exist and are accessible
+- Check if `reports/executed_notebooks.json` exists and contains valid tutorial entries. If absent, switch to code-only extraction mode (see above).
+- Confirm all referenced notebook files exist and are accessible (skip this check in code-only mode).
 - Validate environment activation: `source ${github_repo_name}-env/bin/activate`
 - Check prerequisite tools and dependencies are available
 

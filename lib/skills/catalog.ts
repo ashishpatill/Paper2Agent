@@ -66,6 +66,51 @@ export const skillCatalog: SkillCatalogEntry[] = [
     dependencies: ["tutorial-execution"]
   },
   {
+    id: "gap-analysis",
+    title: "Gap analysis",
+    stage: "implement",
+    summary: "Map paper capabilities to extracted tools, compute coverage score, and route to tutorial or implementation track.",
+    benefit: "Automatically determines whether the paper needs implementation from scratch or is well-covered by existing tutorials.",
+    tools: ["paper analysis", "tool inventory", "coverage scoring"],
+    dependencies: ["tool-extraction"]
+  },
+  {
+    id: "paper-coder",
+    title: "Paper coder",
+    stage: "implement",
+    summary: "Generate experiment code for paper capabilities not covered by extracted tutorial tools.",
+    benefit: "Implements the paper's algorithms and experiments directly from the paper description.",
+    tools: ["Claude Code", "code generation", "hardware profiling"],
+    dependencies: ["gap-analysis"]
+  },
+  {
+    id: "experiment-runner",
+    title: "Experiment runner",
+    stage: "implement",
+    summary: "Execute generated experiment code in a sandboxed subprocess with structured metric capture.",
+    benefit: "Safely runs experiments with timeout enforcement and standardized result collection.",
+    tools: ["subprocess sandbox", "metric extraction", "timeout enforcement"],
+    dependencies: ["paper-coder"]
+  },
+  {
+    id: "results-comparator",
+    title: "Results comparator",
+    stage: "implement",
+    summary: "Compare experiment outputs against the paper's reported results with direction-aware metrics.",
+    benefit: "Validates that the implementation reproduces the paper's findings within acceptable thresholds.",
+    tools: ["metric comparison", "statistical analysis", "result validation"],
+    dependencies: ["experiment-runner"]
+  },
+  {
+    id: "fix-loop",
+    title: "Fix loop",
+    stage: "implement",
+    summary: "Iteratively refine implementation when results diverge from paper, with convergence guards and scope reduction.",
+    benefit: "Closes the gap between implementation and paper results through structured iteration.",
+    tools: ["error diagnosis", "code repair", "convergence detection", "scope reduction"],
+    dependencies: ["results-comparator"]
+  },
+  {
     id: "mcp-packaging",
     title: "MCP packaging",
     stage: "package",
@@ -74,7 +119,7 @@ export const skillCatalog: SkillCatalogEntry[] = [
     tools: ["FastMCP", "Claude Code MCP", "Codex MCP"],
     codexSkill: "paper2agent-skill-graph-orchestrator",
     claudeAgent: "skill-graph-orchestrator",
-    dependencies: ["tool-extraction"]
+    dependencies: ["tool-extraction", "fix-loop"]
   },
   {
     id: "benchmark-evaluation",
@@ -113,6 +158,11 @@ export const defaultSkillLevels: Record<string, SkillLevel> = {
   "environment-bootstrap": "core",
   "tutorial-execution": "core",
   "tool-extraction": "core",
+  "gap-analysis": "core",
+  "paper-coder": "recommended",
+  "experiment-runner": "recommended",
+  "results-comparator": "recommended",
+  "fix-loop": "recommended",
   "mcp-packaging": "core",
   "coverage-quality": "recommended",
   "benchmark-evaluation": "optional",

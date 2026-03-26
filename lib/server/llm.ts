@@ -8,6 +8,13 @@ Return JSON only.
 Infer the best GitHub repository URL if the paper references one.
 Keep summaries concrete and implementation-oriented.
 Use lowercase-hyphen project slugs.`;
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const KNOWN_BAD_GEMINI_MODELS = new Set([
+  "gemini-3-flash",
+  "gemini-3.0-flash",
+  "gemini-3.1-flash-preview",
+  "gemini-3.1-pro-preview"
+]);
 
 function extractJson(text: string) {
   const trimmed = text.trim();
@@ -46,7 +53,7 @@ export function chooseProvider(secrets: StoredSecrets) {
   if (secrets.preferredProvider === "gemini" && secrets.geminiApiKey) {
     return {
       provider: "gemini" as const,
-      model: secrets.geminiModel || "gemini-2.5-flash"
+      model: normalizeGeminiModel(secrets.geminiModel)
     };
   }
 
@@ -60,7 +67,7 @@ export function chooseProvider(secrets: StoredSecrets) {
   if (secrets.geminiApiKey) {
     return {
       provider: "gemini" as const,
-      model: secrets.geminiModel || "gemini-2.5-flash"
+      model: normalizeGeminiModel(secrets.geminiModel)
     };
   }
 
@@ -80,7 +87,10 @@ export async function analyzePaper(options: {
   const prompt = [
     "Analyze this research paper input and map it to a Paper2Agent workflow.",
     "Respond with a JSON object containing these keys only:",
-    "title, abstract, summary, projectSlug, repositoryUrl, confidence, capabilities, suggestedQuestions, setupNotes",
+    "title, abstract, summary, projectSlug, repositoryUrl, confidence, capabilities, reported_results, datasets_required, suggestedQuestions, setupNotes",
+    "",
+    "reported_results: Array of {experiment, metric, value, direction?, condition?} — extract every quantitative result reported in the paper (tables, figures, inline numbers). direction is 'higher_is_better' or 'lower_is_better'.",
+    "datasets_required: Array of {name, source?, size_estimate?, publicly_available} — list all datasets the paper uses or requires.",
     "",
     `Title hint: ${options.titleHint || "unknown"}`,
     `Repository hint: ${options.repositoryUrlHint || "none"}`,
@@ -94,10 +104,7 @@ export async function analyzePaper(options: {
 
   if (options.provider === "gemini") {
     const client = new GoogleGenAI({ apiKey: options.apiKey });
-    const response = await client.models.generateContent({
-      model: options.model,
-      contents: `${SYSTEM_PROMPT}\n\n${prompt}`
-    });
+    const response = await generateGeminiContent(client, options.model, `${SYSTEM_PROMPT}\n\n${prompt}`);
     rawText = response.text || "";
   } else {
     const client = new OpenAI({
@@ -126,7 +133,44 @@ export async function analyzePaper(options: {
     ...parsed,
     repositoryUrl: parsed.repositoryUrl || options.repositoryUrlHint,
     capabilities: parsed.capabilities || [],
+    reported_results: parsed.reported_results || [],
+    datasets_required: parsed.datasets_required || [],
     suggestedQuestions: parsed.suggestedQuestions || [],
     setupNotes: parsed.setupNotes || []
   };
+}
+
+export function normalizeGeminiModel(model?: string) {
+  const trimmed = model?.trim();
+  if (!trimmed) {
+    return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (KNOWN_BAD_GEMINI_MODELS.has(trimmed)) {
+    return DEFAULT_GEMINI_MODEL;
+  }
+
+  return trimmed;
+}
+
+async function generateGeminiContent(client: GoogleGenAI, model: string, contents: string) {
+  const normalizedModel = normalizeGeminiModel(model);
+
+  try {
+    return await client.models.generateContent({
+      model: normalizedModel,
+      contents
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const missingModel = /not found|not supported for generatecontent/i.test(message);
+    if (!missingModel || normalizedModel === DEFAULT_GEMINI_MODEL) {
+      throw error;
+    }
+
+    return client.models.generateContent({
+      model: DEFAULT_GEMINI_MODEL,
+      contents
+    });
+  }
 }

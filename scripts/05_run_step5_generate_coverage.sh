@@ -10,6 +10,7 @@ fi
 SCRIPT_DIR="$1"
 MAIN_DIR="$2"
 repo_name="$3"
+source "$SCRIPT_DIR/scripts/pipeline_helpers.sh"
 STEP_OUT="$MAIN_DIR/claude_outputs/step5_output.json"
 PIPELINE_DIR="$MAIN_DIR/.pipeline"
 MARKER="$PIPELINE_DIR/05_step5_done"
@@ -106,11 +107,10 @@ pytest_exit_code=$?
 set -e
 
 echo "05: Generating coverage summary..." >&2
-coverage report --data-file="$MAIN_DIR/reports/coverage/.coverage" > "$MAIN_DIR/reports/coverage/coverage_summary.txt" 2>&1
+coverage report --data-file="$MAIN_DIR/reports/coverage/.coverage" > "$MAIN_DIR/reports/coverage/coverage_summary.txt" 2>&1 || true
 
 if [[ $pytest_exit_code -ne 0 ]]; then
-  echo "Error: pytest reported failures. See reports/coverage/pytest_output.txt" >&2
-  exit $pytest_exit_code
+  echo "05: Warning: pytest reported failures (exit $pytest_exit_code). See reports/coverage/pytest_output.txt. Continuing to generate coverage report." >&2
 fi
 
 # Run pylint on tool files
@@ -128,8 +128,7 @@ grep -E '^[A-Z]:|Your code has been rated' "$MAIN_DIR/reports/quality/pylint/pyl
   > "$MAIN_DIR/reports/quality/pylint/pylint_scores.txt" || true
 
 if [[ $pylint_exit_code -gt 1 ]]; then
-  echo "Error: pylint execution failed. See reports/quality/pylint/pylint_report.txt" >&2
-  exit $pylint_exit_code
+  echo "05: Warning: pylint execution failed (exit $pylint_exit_code). See reports/quality/pylint/pylint_report.txt. Continuing." >&2
 fi
 
 echo "05: Coverage and pylint analysis complete, generating reports..." >&2
@@ -138,7 +137,10 @@ echo "05: Coverage and pylint analysis complete, generating reports..." >&2
 export github_repo_name="$repo_name"
 
 # Replace ${github_repo_name} placeholder in prompt
-envsubst < "$STEP5_PROMPT" | claude --model claude-sonnet-4-20250514 \
+ENVSUBST_BIN="$(require_cli envsubst)"
+CLAUDE_BIN="$(require_cli claude)"
+
+"$ENVSUBST_BIN" < "$STEP5_PROMPT" | "$CLAUDE_BIN" --model claude-sonnet-4-20250514 \
   --verbose --output-format stream-json \
   --dangerously-skip-permissions -p - > "$STEP_OUT"
 

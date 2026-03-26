@@ -11,6 +11,7 @@ SCRIPT_DIR="$1"
 MAIN_DIR="$2"
 repo_name="$3"
 tutorial_filter="${4:-}"
+source "$SCRIPT_DIR/scripts/pipeline_helpers.sh"
 STEP_OUT="$MAIN_DIR/claude_outputs/step1_output.json"
 PIPELINE_DIR="$MAIN_DIR/.pipeline"
 MARKER="$PIPELINE_DIR/05_step1_done"
@@ -29,14 +30,17 @@ fi
 export github_repo_name="$repo_name"
 export tutorial_filter="$tutorial_filter"
 
-envsubst < "$STEP1_PROMPT" | claude \
+ENVSUBST_BIN="$(require_cli envsubst)"
+CLAUDE_BIN="$(require_cli claude)"
+
+"$ENVSUBST_BIN" < "$STEP1_PROMPT" | "$CLAUDE_BIN" \
   --model claude-sonnet-4-20250514 \
   --verbose \
   --output-format stream-json \
   --dangerously-skip-permissions \
   -p - > "$STEP_OUT"
 
-if rg -qi 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
+if search_text 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
   echo "05: ERROR - step 1 asked for clarification instead of executing the tutorial scan" >&2
   exit 1
 fi
@@ -49,7 +53,7 @@ if [[ ! -s "$SCAN_JSON" || ! -s "$INCLUDE_JSON" ]]; then
   exit 1
 fi
 
-if rg -qi 'AlphaPOP|score_batch|alphagenome|templates/' "$SCAN_JSON" "$INCLUDE_JSON"; then
+if search_text 'AlphaPOP|score_batch|alphagenome|templates/' "$SCAN_JSON" "$INCLUDE_JSON"; then
   echo "05: ERROR - step 1 output referenced template/example assets instead of the target repository" >&2
   exit 1
 fi

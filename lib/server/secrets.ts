@@ -2,11 +2,12 @@ import { chmod } from "node:fs/promises";
 import path from "node:path";
 
 import { ensureAppDirectories, localRoot, readJsonFile, writeJsonFile } from "./fs";
+import { normalizeGeminiModel } from "./llm";
 import type { SecretsSummary, StoredSecrets } from "./types";
 
 const secretsFile = path.join(localRoot, "secrets.json");
 
-const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const DEFAULT_GEMINI_MODEL = normalizeGeminiModel(process.env.GEMINI_MODEL);
 const DEFAULT_OPENROUTER_MODEL =
   process.env.OPENROUTER_MODEL || "openai/gpt-5.2-mini";
 
@@ -18,7 +19,7 @@ export async function loadSecrets(): Promise<StoredSecrets> {
     ...stored,
     geminiApiKey: process.env.GEMINI_API_KEY || stored.geminiApiKey,
     openrouterApiKey: process.env.OPENROUTER_API_KEY || stored.openrouterApiKey,
-    geminiModel: stored.geminiModel || DEFAULT_GEMINI_MODEL,
+    geminiModel: normalizeGeminiModel(stored.geminiModel || DEFAULT_GEMINI_MODEL),
     openrouterModel: stored.openrouterModel || DEFAULT_OPENROUTER_MODEL,
     preferredProvider: stored.preferredProvider || "gemini"
   };
@@ -30,6 +31,10 @@ export async function saveSecrets(nextSecrets: Partial<StoredSecrets>) {
     ...current,
     ...nextSecrets
   };
+
+  if (nextSecrets.geminiModel !== undefined) {
+    merged.geminiModel = normalizeGeminiModel(nextSecrets.geminiModel);
+  }
 
   if (nextSecrets.geminiApiKey === "") {
     delete merged.geminiApiKey;

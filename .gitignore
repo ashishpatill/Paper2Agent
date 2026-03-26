@@ -15,3 +15,5 @@ pnpm-debug.log*
 .venv/
 *.pyc
 __pycache__/
+tsconfig.tsbuildinfo
+docs/research/

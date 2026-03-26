@@ -6,8 +6,8 @@ import { getSecretsSummary, saveSecrets } from "@/lib/server/secrets";
 const payloadSchema = z.object({
   geminiApiKey: z.string().optional().transform((value) => value?.trim()),
   openrouterApiKey: z.string().optional().transform((value) => value?.trim()),
-  geminiModel: z.string().min(1).optional(),
-  openrouterModel: z.string().min(1).optional(),
+  geminiModel: z.string().min(1).optional().transform((value) => value?.trim()),
+  openrouterModel: z.string().min(1).optional().transform((value) => value?.trim()),
   preferredProvider: z.enum(["gemini", "openrouter"]).optional()
 });
 

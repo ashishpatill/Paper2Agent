@@ -9,6 +9,7 @@ fi
 
 SCRIPT_DIR="$1"
 MAIN_DIR="$2"
+source "$SCRIPT_DIR/scripts/pipeline_helpers.sh"
 STEP_OUT="$MAIN_DIR/claude_outputs/step4_output.json"
 PIPELINE_DIR="$MAIN_DIR/.pipeline"
 MARKER="$PIPELINE_DIR/05_step4_done"
@@ -23,11 +24,13 @@ if [[ -f "$MARKER" ]]; then
   exit 0
 fi
 
-claude --model claude-sonnet-4-20250514 \
+CLAUDE_BIN="$(require_cli claude)"
+
+"$CLAUDE_BIN" --model claude-sonnet-4-20250514 \
   --verbose --output-format stream-json \
   --dangerously-skip-permissions -p - < "$STEP4_PROMPT" > "$STEP_OUT"
 
-if rg -qi 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
+if search_text 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
   echo "05: ERROR - step 4 asked for clarification instead of packaging an MCP server" >&2
   exit 1
 fi
