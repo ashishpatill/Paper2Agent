@@ -221,6 +221,60 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
 
     log_progress $((4+i)) "$STEP_NAME" "start"
 
+    # Per-step timeout thresholds (seconds) — warnings only, not kills
+    case $i in
+      1|2|3) STEP_TIMEOUT_SECS=600 ;;   # 10 min for env/tutorials/extract
+      4|5)   STEP_TIMEOUT_SECS=300 ;;   # 5 min for MCP wrap/coverage
+      6|7)   STEP_TIMEOUT_SECS=300 ;;   # 5 min for benchmarks
+      8)     STEP_TIMEOUT_SECS=300 ;;   # 5 min for gap analysis
+      9)     STEP_TIMEOUT_SECS=900 ;;   # 15 min for paper coder
+      10)    STEP_TIMEOUT_SECS=1200 ;;  # 20 min for experiment runner
+      11)    STEP_TIMEOUT_SECS=300 ;;   # 5 min for results comparator
+      12)    STEP_TIMEOUT_SECS=1800 ;;  # 30 min for fix loop
+      13)    STEP_TIMEOUT_SECS=600 ;;   # 10 min for MCP re-wrap
+      *)     STEP_TIMEOUT_SECS=600 ;;
+    esac
+    export STEP_TIMEOUT_SECS
+
+    # Start heartbeat monitor for this step's Claude output
+    STEP_OUTFILE="$MAIN_DIR/claude_outputs/step${i}_output.json"
+    _heartbeat_pid=""
+    (
+      sleep 5
+      _last_size=0
+      _last_desc=""
+      _tick=0
+      while true; do
+        sleep 15
+        _tick=$((_tick + 1))
+        [[ -f "$STEP_OUTFILE" ]] || continue
+        _cur_size=$(wc -c < "$STEP_OUTFILE" 2>/dev/null || echo 0)
+        # Extract latest activity from Claude stream-json
+        _desc=$(tail -3 "$STEP_OUTFILE" 2>/dev/null | grep -o '"description":"[^"]*"' | tail -1 | sed 's/"description":"//;s/"$//' 2>/dev/null || true)
+        if [[ -z "$_desc" ]]; then
+          _desc=$(tail -3 "$STEP_OUTFILE" 2>/dev/null | grep -o '"last_tool_name":"[^"]*"' | tail -1 | sed 's/"last_tool_name":"//;s/"$//' 2>/dev/null || true)
+        fi
+        _elapsed=$((_tick * 15))
+        # Warn if step exceeds expected timeout (10 minutes for most steps, 20 for heavy ones)
+        _warn_threshold=${STEP_TIMEOUT_SECS:-600}
+        if [[ $_elapsed -eq $_warn_threshold ]]; then
+          echo "  ⚠️  [${_elapsed}s] Step has exceeded ${_warn_threshold}s — may be stuck" >&2
+        elif [[ $_elapsed -gt $_warn_threshold && $((_tick % 8)) -eq 0 ]]; then
+          echo "  ⚠️  [${_elapsed}s] Step still running past timeout (${_cur_size} bytes output)" >&2
+        fi
+        if [[ -n "$_desc" && "$_desc" != "$_last_desc" ]]; then
+          echo "  ↳ [${_elapsed}s] Claude: ${_desc:0:120}" >&2
+          _last_desc="$_desc"
+        elif [[ "$_cur_size" -gt "$_last_size" ]]; then
+          echo "  ↳ [${_elapsed}s] Claude working... (${_cur_size} bytes output)" >&2
+        elif [[ $((_tick % 4)) -eq 0 ]]; then
+          echo "  ↳ [${_elapsed}s] Still running (${_cur_size} bytes)" >&2
+        fi
+        _last_size=$_cur_size
+      done
+    ) &
+    _heartbeat_pid=$!
+
     MAX_STEP_RETRIES=2
     step_attempt=0
     step_succeeded=false
@@ -320,6 +374,12 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
         fi
       fi
     done
+
+    # Stop heartbeat monitor
+    if [[ -n "$_heartbeat_pid" ]]; then
+      kill "$_heartbeat_pid" 2>/dev/null || true
+      wait "$_heartbeat_pid" 2>/dev/null || true
+    fi
 
     if [[ "$step_succeeded" == "true" ]]; then
       if [[ "${STEP_STATUS_LIST[$i]}" != "skipped" ]]; then

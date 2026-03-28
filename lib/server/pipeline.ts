@@ -11,6 +11,7 @@ export interface PipelineProgressEvent {
   totalSteps?: number;
   stepLabel?: string;
   phase?: "start" | "complete" | "skip" | "error";
+  heartbeat?: string;
 }
 
 // Step names for the full pipeline (steps 1-13 in the core loop, plus setup steps)
@@ -274,6 +275,12 @@ export async function runPipeline(options: {
             : phaseToken.startsWith("skip")
               ? "skip"
               : "error";
+      }
+
+      // Capture heartbeat lines as activity updates (↳ prefix)
+      const heartbeatMatch = line.match(/↳\s+\[(\d+)s\]\s+(.*)/);
+      if (heartbeatMatch) {
+        event.heartbeat = heartbeatMatch[2].slice(0, 200);
       }
 
       void options.onProgress?.(event);

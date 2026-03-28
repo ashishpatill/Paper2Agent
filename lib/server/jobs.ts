@@ -35,7 +35,34 @@ export async function getJob(jobId: string) {
   try {
     const content = await readFile(jobFile(jobId), "utf8");
     return JSON.parse(content) as JobRecord;
-  } catch {
+  } catch (error) {
+    // If the file exists but JSON is corrupted, try to recover the first valid object
+    if (error instanceof SyntaxError && error.message.includes("position")) {
+      try {
+        const raw = await readFile(jobFile(jobId), "utf8");
+        // Find first complete JSON object by scanning for matching braces
+        let depth = 0;
+        let inString = false;
+        let escape = false;
+        for (let i = 0; i < raw.length; i++) {
+          const ch = raw[i];
+          if (escape) { escape = false; continue; }
+          if (ch === "\\") { escape = true; continue; }
+          if (ch === '"') { inString = !inString; continue; }
+          if (inString) continue;
+          if (ch === "{") depth++;
+          if (ch === "}") { depth--; if (depth === 0) {
+            const recovered = JSON.parse(raw.slice(0, i + 1)) as JobRecord;
+            // Repair the file atomically
+            const target = jobFile(jobId);
+            const tmp = `${target}.tmp`;
+            await writeFile(tmp, JSON.stringify(recovered, null, 2), "utf8");
+            await rename(tmp, target);
+            return recovered;
+          }}
+        }
+      } catch { /* recovery failed, fall through */ }
+    }
     return null;
   }
 }
@@ -76,7 +103,10 @@ export async function updateJob(jobId: string, updater: (job: JobRecord) => JobR
 
   const target = jobFile(jobId);
   const tmp = `${target}.tmp`;
-  await writeFile(tmp, JSON.stringify(next, null, 2), "utf8");
+  const serialized = JSON.stringify(next, null, 2);
+  // Validate the serialized JSON before writing to prevent corruption
+  JSON.parse(serialized);
+  await writeFile(tmp, serialized, "utf8");
   await rename(tmp, target);
   return next;
 }

@@ -95,10 +95,15 @@ function progressFromPipelineEvent(event: PipelineProgressEvent) {
 const stepEvents: { stepNumber: number; phase: string; label: string; timestamp: string }[] = [];
 
 async function handlePipelineProgress(jobId: string, pipelinePaths: ReturnType<typeof getPipelinePaths>, event: PipelineProgressEvent) {
-  const stage =
+  let stage =
     event.stepNumber && event.stepLabel
       ? `Step ${event.stepNumber}/${event.totalSteps}: ${event.stepLabel}`
       : "Paper2Agent is running.";
+
+  // Append heartbeat detail so the UI shows what Claude is doing
+  if (event.heartbeat) {
+    stage += ` — ${event.heartbeat}`;
+  }
 
   // Track step-level events
   if (event.stepNumber && event.phase) {
