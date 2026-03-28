@@ -56,6 +56,23 @@ fi
 export results_dir="$RESULTS_DIR"
 export experiments_dir="$MAIN_DIR/src/experiments"
 
+# Detect sandbox mode: Docker if available, otherwise subprocess
+sandbox_mode="subprocess"
+sandbox_network="none"
+sandbox_timeout=1800
+sandbox_memory="8g"
+sandbox_gpu="false"
+
+if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+  sandbox_mode="docker"
+  # Check for GPU passthrough availability
+  if command -v nvidia-smi &>/dev/null; then
+    sandbox_gpu="true"
+  fi
+fi
+
+export sandbox_mode sandbox_network sandbox_timeout sandbox_memory sandbox_gpu
+
 ENVSUBST_BIN="$(require_cli envsubst)"
 CLAUDE_BIN="$(require_cli claude)"
 

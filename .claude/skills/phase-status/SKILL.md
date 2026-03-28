@@ -30,13 +30,13 @@ Report on the Paper2Agent phased delivery status.
 - [x] Types: ReportedResult, GapAnalysis, ExperimentAttempt, ResultsComparison, FixLoopState
 - [x] Skill graph: 5 new "implement" stage skills
 
-### Phase 4 — Sandbox & Safety (NEXT)
-- [ ] Docker sandbox for experiment isolation
-- [ ] Anti-fabrication registry (VerifiedRegistry)
-- [ ] MCP re-wrap after implementation track
-- [ ] Network policies for sandboxed execution
+### Phase 4 — Sandbox & Safety
+- [x] Docker sandbox for experiment isolation (`lib/server/sandbox.ts`, `docker/sandbox.Dockerfile`)
+- [x] Anti-fabrication registry (`lib/server/verified-registry.ts`)
+- [x] MCP re-wrap after implementation track (step 13)
+- [x] Network policies for sandboxed execution (none/setup_only/full modes)
 
-### Phase 5 — Cross-Run Learning
+### Phase 5 — Cross-Run Learning (NEXT)
 - [ ] Evolution store with time-decay JSONL
 - [ ] Stage-specific prompt overlays
 - [ ] Cross-run skill transfer

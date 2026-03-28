@@ -17,6 +17,11 @@ Execute each experiment defined in `src/experiments/manifest.json`, capture stru
 - `src/experiments/*.py` — experiment scripts and harnesses
 - Environment: `${experiment_env_path}` (activate if non-empty)
 - Results destination: `${results_dir}`
+- Sandbox mode: `${sandbox_mode}` (subprocess or docker)
+- Sandbox network policy: `${sandbox_network}` (none/setup_only/full)
+- Sandbox timeout: `${sandbox_timeout}` seconds
+- Sandbox memory limit: `${sandbox_memory}`
+- Sandbox GPU passthrough: `${sandbox_gpu}`
 
 ## Process
 
@@ -38,10 +43,21 @@ For each experiment in the manifest:
 - Check if it requires GPU and whether GPU is available
 - Set timeout from manifest (default: 1800 seconds)
 
-**b. Run in subprocess:**
+**b. Run experiment (sandbox-aware):**
+
+If `${sandbox_mode}` is `docker`:
+```bash
+docker run --rm --network ${sandbox_network} --memory ${sandbox_memory} \
+  ${sandbox_gpu:+--gpus all} \
+  -v $(pwd):/workspace -w /workspace \
+  paper2agent-sandbox:latest \
+  timeout ${sandbox_timeout} python src/experiments/<script> 2>&1 | tee reports/experiment_results/<name>_output.log
+```
+
+If `${sandbox_mode}` is `subprocess` (fallback):
 ```bash
 cd <workspace_dir>
-timeout <timeout_seconds> python src/experiments/<script> 2>&1 | tee reports/experiment_results/<name>_output.log
+timeout ${sandbox_timeout} python src/experiments/<script> 2>&1 | tee reports/experiment_results/<name>_output.log
 ```
 
 **c. Parse RESULT lines:**

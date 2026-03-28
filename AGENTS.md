@@ -36,11 +36,11 @@ The pipeline has two tracks that route automatically based on coverage score:
 Scan tutorials → Execute notebooks → Extract tools → Wrap MCP → Coverage → Benchmarks
 ```
 
-### Implementation Track (Steps 8-12)
+### Implementation Track (Steps 8-13)
 ```
-Gap Analysis → Paper Coder → Experiment Runner → Results Comparator → Fix Loop
-     ↑                                                                    │
-     └────────────────── iterate (max 3 attempts) ───────────────────────┘
+Gap Analysis → Paper Coder → Experiment Runner → Results Comparator → Fix Loop → MCP Re-wrap
+     ↑                          (sandboxed)                              │
+     └────────────────── iterate (max 3 attempts) ──────────────────────┘
 ```
 
 ### Routing
@@ -56,17 +56,19 @@ Step 8 computes `coverage_score = covered / total_capabilities`:
 - **Versioned rollback**: experiment files saved as `_v1.py`, `_v2.py` before modification
 - **Convergence guards**: max 3 attempts, 2 consecutive non-improvements → stop
 - **Scope reduction**: reduce conditions/epochs rather than fail completely
+- **Sandbox isolation**: experiments run in Docker (if available) or subprocess with resource limits and network policies
+- **Anti-fabrication registry**: every reported metric must trace to an actual experiment artifact
 
 ## Phased Delivery
 
 ### Phase 1-3: COMPLETE
 Foundation, pipeline hardening, implementation track (steps 8-12).
 
-### Phase 4: Sandbox & Safety (NEXT)
-- Docker sandbox for experiment isolation
-- Anti-fabrication registry for result validation
-- MCP re-wrap after implementation track
-- Network policies for sandboxed execution
+### Phase 4: Sandbox & Safety (COMPLETE)
+- Docker sandbox for experiment isolation (`lib/server/sandbox.ts`, `docker/`)
+- Anti-fabrication registry for result validation (`lib/server/verified-registry.ts`)
+- MCP re-wrap after implementation track (step 13)
+- Network policies for sandboxed execution (none/setup_only/full)
 
 ### Phase 5: Cross-Run Learning
 - Evolution store with time-decay
