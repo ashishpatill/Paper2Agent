@@ -106,6 +106,32 @@ export interface FixLoopState {
   convergence_reason?: string;
 }
 
+export type SandboxMode = "subprocess" | "docker";
+export type NetworkPolicy = "none" | "setup_only" | "full";
+
+export interface SandboxConfig {
+  mode: SandboxMode;
+  workspacePath: string;
+  timeoutSeconds: number;
+  docker?: {
+    image?: string;
+    gpuPassthrough?: boolean;
+    networkPolicy?: NetworkPolicy;
+    memoryLimit?: string;
+    cpuLimit?: number;
+    extraMounts?: string[];
+  };
+  envPath?: string;
+}
+
+export interface VerificationResult {
+  metric: string;
+  claimedValue: number;
+  verified: boolean;
+  source?: string;
+  reason: string;
+}
+
 export interface ImplementabilityAssessment {
   verdict: "implementable" | "risky" | "blocked";
   summary: string;
