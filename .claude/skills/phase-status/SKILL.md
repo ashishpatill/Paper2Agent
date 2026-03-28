@@ -41,12 +41,13 @@ Report on the Paper2Agent phased delivery status.
 - [x] Stage-specific prompt overlays (`lib/server/prompt-overlay.ts`)
 - [x] Cross-run skill transfer (`lib/server/skill-transfer.ts`)
 
-### Phase 6 — Data Acquisition (NEXT)
-- [ ] Auto-download from HuggingFace/Zenodo
-- [ ] Synthetic proxy dataset generation
-- [ ] Dataset caching and subsampling
+### Phase 6 — Data Acquisition
+- [x] Dataset resolver: HuggingFace, Zenodo, UCI, Kaggle, URL (`lib/server/dataset-resolver.ts`)
+- [x] Cached downloader with integrity checks (`lib/server/dataset-downloader.ts`)
+- [x] Synthetic proxy generator: tabular, text, image, time-series, graph (`lib/server/synthetic-data.ts`)
+- [x] Pipeline integration: step 9 pre-flight acquisition (`scripts/acquire-datasets.ts`)
 
-### Phase 7 — Production
+### Phase 7 — Production (NEXT)
 - [ ] Multi-paper job queuing
 - [ ] Result dashboards
 - [ ] API for external consumers

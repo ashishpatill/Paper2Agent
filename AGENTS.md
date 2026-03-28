@@ -76,10 +76,11 @@ Foundation, pipeline hardening, implementation track (steps 8-12).
 - Cross-run skill transfer (`lib/server/skill-transfer.ts`)
 - Pipeline integration: lessons extracted post-run, overlays injected into steps 8-12
 
-### Phase 6: Data Acquisition
-- Auto-download from HuggingFace/Zenodo
-- Synthetic proxy dataset generation
-- Dataset caching and subsampling
+### Phase 6: Data Acquisition (COMPLETE)
+- Dataset resolver: HuggingFace, Zenodo, UCI, Kaggle, direct URL (`lib/server/dataset-resolver.ts`)
+- Cached downloader with resumable downloads (`lib/server/dataset-downloader.ts`)
+- Synthetic proxy generator for 5 data shapes (`lib/server/synthetic-data.ts`)
+- Integrated into step 9 pre-flight via `scripts/acquire-datasets.ts`
 
 ### Phase 7: Production
 - Multi-paper job queuing

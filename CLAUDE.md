@@ -57,10 +57,10 @@ Docker sandbox for experiment isolation. Anti-fabrication registry (VerifiedRegi
 ### Phase 5 — Cross-Run Learning (DONE)
 Evolution store with time-decay JSONL. Stage-specific prompt overlays. Cross-run skill transfer. Lesson extraction post-run, overlay injection into steps 8-12.
 
-### Phase 6 — Data Acquisition (NEXT)
-Auto-download from HuggingFace/Zenodo/UCI. Synthetic proxy dataset generation. Stratified subsampling for large corpora. Dataset caching.
+### Phase 6 — Data Acquisition (DONE)
+Dataset resolver (HuggingFace/Zenodo/UCI/Kaggle/URL). Cached downloader. Synthetic proxy generator (tabular/text/image/time-series/graph). Integrated into step 9 pre-flight.
 
-### Phase 7 — Production (PLANNED)
+### Phase 7 — Production (NEXT)
 Multi-paper job queuing. Result dashboards. API for external consumers. Deployment packaging.
 
 ## Critical Constraints
