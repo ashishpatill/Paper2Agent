@@ -77,3 +77,4 @@ Write the following JSON to `reports/gap_analysis.json`:
 - If no tools were extracted at all, coverage_score = 0.
 - If no paper analysis is available, infer capabilities from the repository README and paper title.
 - Do NOT generate implementation code in this step — only analyze and report.
+${evolution_overlay}

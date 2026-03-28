@@ -46,6 +46,10 @@ fi
 export paper_analysis_path="${PAPER_ANALYSIS:-}"
 export tools_dir="$TOOLS_DIR"
 
+# Inject cross-run learning overlay
+export evolution_overlay
+evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 8)"
+
 ENVSUBST_BIN="$(require_cli envsubst)"
 CLAUDE_BIN="$(require_cli claude)"
 

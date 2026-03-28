@@ -266,6 +266,13 @@ else
   MCP_STATUS="executed"
 fi
 
+# --- Extract lessons for cross-run learning ---
+NPX_BIN="$(command -v npx 2>/dev/null || echo "")"
+if [[ -n "$NPX_BIN" ]]; then
+  "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/extract-lessons.ts" \
+    "$SCRIPT_DIR" "$MAIN_DIR" "${PAPER_TITLE:-}" "$repo_name" 2>&1 || true
+fi
+
 # --- Final Summary Report ---
 echo ""
 echo "🎉 Pipeline execution completed!" >&2

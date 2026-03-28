@@ -114,3 +114,4 @@ Generate `src/experiments/manifest.json`:
 - Scale experiments to available hardware (use ${hw_tier} profile).
 - Preserve the separation between experiment code (mutable) and harness code (immutable).
 - If the paper's method requires unavailable resources (GPUs, proprietary data), implement a scaled-down version that tests the same hypothesis at smaller scale.
+${evolution_overlay}

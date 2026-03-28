@@ -84,6 +84,19 @@ require_cli() {
   echo "$resolved"
 }
 
+generate_overlay() {
+  local script_dir="$1"
+  local main_dir="$2"
+  local step_num="$3"
+  local repo_name="${4:-}"
+
+  # Try to generate evolution store overlay via tsx
+  local npx_bin=""
+  if npx_bin="$(resolve_cli npx 2>/dev/null)"; then
+    "$npx_bin" tsx "$script_dir/scripts/evolution-overlay.ts" "$main_dir" "$step_num" "$repo_name" 2>/dev/null || true
+  fi
+}
+
 search_text() {
   local pattern="$1"
   shift

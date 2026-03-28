@@ -53,6 +53,10 @@ fi
 export hw_gpu hw_vram hw_tier
 export gap_report_path="$GAP_REPORT"
 
+# Inject cross-run learning overlay
+export evolution_overlay
+evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 9 "$repo_name")"
+
 ENVSUBST_BIN="$(require_cli envsubst)"
 CLAUDE_BIN="$(require_cli claude)"
 

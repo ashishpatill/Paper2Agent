@@ -121,3 +121,4 @@ Write `reports/experiment_results/summary.json`:
 - If ALL experiments crash on the same dependency, install it once and retry all.
 - Do not fabricate metrics — only report what the experiment actually output.
 - If no experiments can run at all (e.g., all require GPU on a CPU machine), report this clearly in the summary and exit gracefully.
+${evolution_overlay}

@@ -141,3 +141,4 @@ attempt	match_score	status	description
 - Prefer targeted, minimal fixes over full rewrites.
 - Log every change with a clear description in attempts.tsv.
 - **Anti-fabrication**: Every metric value in the final report MUST trace to an actual experiment output (RESULT line in a log file or value in a result JSON). Do not report numbers that were not actually produced by experiment code. If an experiment did not produce a metric, report it as `null`, not a guessed value.
+${evolution_overlay}

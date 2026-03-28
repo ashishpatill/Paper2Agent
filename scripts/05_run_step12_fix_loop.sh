@@ -75,6 +75,10 @@ export experiments_dir="$MAIN_DIR/src/experiments"
 export results_dir="$MAIN_DIR/reports/experiment_results"
 export max_fix_attempts="$MAX_FIX_ATTEMPTS"
 
+# Inject cross-run learning overlay
+export evolution_overlay
+evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 12 "$REPO_NAME")"
+
 # The fix loop runs as a single Claude session that iterates internally.
 # It reads the comparison report, identifies failing experiments,
 # modifies code, re-runs, and re-compares — up to MAX_FIX_ATTEMPTS times.

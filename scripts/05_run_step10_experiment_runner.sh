@@ -73,6 +73,10 @@ fi
 
 export sandbox_mode sandbox_network sandbox_timeout sandbox_memory sandbox_gpu
 
+# Inject cross-run learning overlay
+export evolution_overlay
+evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 10 "$REPO_NAME")"
+
 ENVSUBST_BIN="$(require_cli envsubst)"
 CLAUDE_BIN="$(require_cli claude)"
 
