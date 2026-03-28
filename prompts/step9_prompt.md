@@ -23,6 +23,11 @@ Generate experiment code that implements the paper's uncovered capabilities iden
 - VRAM: ${hw_vram}
 - Tier: ${hw_tier}
 
+## Data
+- Pre-acquired datasets: `data/` (may contain downloaded or synthetic proxy datasets)
+- Acquisition script: `data/acquire_data.sh` (shows what was resolved)
+- If needed data is not in `data/`, generate download code or synthetic proxies in experiment scripts
+
 Adapt generated code to available hardware. If tier is "cpu", avoid CUDA-specific code. If tier is "mps", use MPS-compatible operations. Scale batch sizes and model sizes to fit available VRAM.
 
 ## Process

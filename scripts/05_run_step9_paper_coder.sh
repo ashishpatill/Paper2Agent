@@ -53,6 +53,23 @@ fi
 export hw_gpu hw_vram hw_tier
 export gap_report_path="$GAP_REPORT"
 
+# Acquire datasets before generating experiment code
+NPX_BIN="$(resolve_cli npx 2>/dev/null || echo "")"
+if [[ -n "$NPX_BIN" ]]; then
+  PAPER_ANALYSIS=""
+  for candidate in \
+    "$MAIN_DIR/reports/paper-analysis.json" \
+    "$MAIN_DIR/../.paper2agent/jobs/*/paper-analysis.json"; do
+    if [[ -f "$candidate" ]]; then
+      PAPER_ANALYSIS="$candidate"
+      break
+    fi
+  done
+  echo "05: step 9 - acquiring datasets..." >&2
+  "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/acquire-datasets.ts" \
+    "$SCRIPT_DIR" "$MAIN_DIR" "${PAPER_ANALYSIS:-}" 2>&1 || true
+fi
+
 # Inject cross-run learning overlay
 export evolution_overlay
 evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 9 "$repo_name")"
