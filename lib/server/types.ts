@@ -132,6 +132,25 @@ export interface VerificationResult {
   reason: string;
 }
 
+export interface StepStatus {
+  stepNumber: number;
+  name: string;
+  status: "pending" | "running" | "completed" | "skipped" | "failed";
+  startedAt?: string;
+  completedAt?: string;
+  durationSeconds?: number;
+  lastOutput?: string;
+  error?: string;
+}
+
+export interface PipelineProgress {
+  steps: StepStatus[];
+  currentStep?: number;
+  totalSteps: number;
+  stalledSince?: string;
+  stallDiagnosis?: string;
+}
+
 export interface ImplementabilityAssessment {
   verdict: "implementable" | "risky" | "blocked";
   summary: string;
@@ -190,4 +209,27 @@ export interface JobRecord {
   paperTextPath?: string;
   implementability?: ImplementabilityAssessment;
   analysis?: PaperAnalysis;
+  pipelineProgress?: PipelineProgress;
+  userFeedback?: UserFeedback[];
+  validationReport?: ValidationReport;
+}
+
+export interface UserFeedback {
+  timestamp: string;
+  message: string;
+  action?: "hint" | "skip_step" | "restart_step" | "adjust_config";
+  stepNumber?: number;
+  consumed: boolean;
+}
+
+export interface ValidationReport {
+  timestamp: string;
+  overall: "pass" | "partial" | "fail";
+  checks: ValidationCheck[];
+}
+
+export interface ValidationCheck {
+  name: string;
+  passed: boolean;
+  detail: string;
 }

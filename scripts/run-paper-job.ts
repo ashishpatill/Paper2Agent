@@ -6,6 +6,7 @@ import { getJob, updateJob } from "../lib/server/jobs";
 import { analyzePaper, chooseProvider } from "../lib/server/llm";
 import { extractPaperFromPdf, extractPaperFromUrl } from "../lib/server/paper-intake";
 import {
+  buildPipelineProgress,
   diagnosePipelineFailure,
   getPipelinePaths,
   runPipeline,
@@ -90,11 +91,38 @@ function progressFromPipelineEvent(event: PipelineProgressEvent) {
   return Math.round(50 + pipelineShare * 45);
 }
 
+// Accumulate step events for pipeline progress tracking
+const stepEvents: { stepNumber: number; phase: string; label: string; timestamp: string }[] = [];
+
 async function handlePipelineProgress(jobId: string, pipelinePaths: ReturnType<typeof getPipelinePaths>, event: PipelineProgressEvent) {
   const stage =
     event.stepNumber && event.stepLabel
       ? `Step ${event.stepNumber}/${event.totalSteps}: ${event.stepLabel}`
       : "Paper2Agent is running.";
+
+  // Track step-level events
+  if (event.stepNumber && event.phase) {
+    stepEvents.push({
+      stepNumber: event.stepNumber,
+      phase: event.phase,
+      label: event.stepLabel || "",
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const pipelineProgress = buildPipelineProgress(stepEvents, event.totalSteps);
+
+  // Detect stalls: if a step has been running for more than 5 minutes, note it
+  if (pipelineProgress.currentStep) {
+    const currentStepInfo = pipelineProgress.steps.find(s => s.stepNumber === pipelineProgress.currentStep);
+    if (currentStepInfo?.startedAt) {
+      const elapsed = (Date.now() - Date.parse(currentStepInfo.startedAt)) / 1000;
+      if (elapsed > 300) {
+        pipelineProgress.stalledSince = currentStepInfo.startedAt;
+        pipelineProgress.stallDiagnosis = `Step ${currentStepInfo.stepNumber} (${currentStepInfo.name}) has been running for ${Math.round(elapsed / 60)}m`;
+      }
+    }
+  }
 
   await patchJob(
     jobId,
@@ -104,7 +132,8 @@ async function handlePipelineProgress(jobId: string, pipelinePaths: ReturnType<t
       logPath: pipelinePaths.logPath,
       currentStage: stage,
       lastLogLine: event.line,
-      progressPercent: progressFromPipelineEvent(event)
+      progressPercent: progressFromPipelineEvent(event),
+      pipelineProgress,
     },
     { markProgress: true }
   );

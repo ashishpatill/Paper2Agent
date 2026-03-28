@@ -1,8 +1,9 @@
-import { mkdir, open, readFile, readdir } from "node:fs/promises";
+import { mkdir, open, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
 import { logsRoot, workspacesRoot } from "./fs";
+import type { PipelineProgress, StepStatus } from "./types";
 
 export interface PipelineProgressEvent {
   line: string;
@@ -10,6 +11,102 @@ export interface PipelineProgressEvent {
   totalSteps?: number;
   stepLabel?: string;
   phase?: "start" | "complete" | "skip" | "error";
+}
+
+// Step names for the full pipeline (steps 1-13 in the core loop, plus setup steps)
+const STEP_NAMES: Record<number, string> = {
+  1: "Setup environment & scan tutorials",
+  2: "Execute tutorial notebooks",
+  3: "Extract tools from tutorials",
+  4: "Wrap tools in MCP server",
+  5: "Generate coverage & quality reports",
+  6: "Extract benchmark questions",
+  7: "Run benchmark assessment",
+  8: "Gap analysis (coverage scoring)",
+  9: "Paper coder (implement gaps)",
+  10: "Experiment runner (sandboxed)",
+  11: "Results comparator",
+  12: "Fix loop (convergence iteration)",
+  13: "MCP re-wrap (implementation tools)",
+};
+
+/**
+ * Build a PipelineProgress snapshot from accumulated step events.
+ */
+export function buildPipelineProgress(
+  events: { stepNumber: number; phase: string; label: string; timestamp: string }[],
+  totalSteps = 17
+): PipelineProgress {
+  const steps: StepStatus[] = [];
+
+  // Initialize all 13 core steps as pending
+  for (let i = 1; i <= 13; i++) {
+    steps.push({
+      stepNumber: i,
+      name: STEP_NAMES[i] || `Step ${i}`,
+      status: "pending",
+    });
+  }
+
+  // Apply events in order
+  let currentStep: number | undefined;
+  for (const event of events) {
+    const idx = steps.findIndex(s => s.stepNumber === event.stepNumber);
+    if (idx === -1) continue;
+
+    const step = steps[idx];
+    switch (event.phase) {
+      case "start":
+        step.status = "running";
+        step.startedAt = event.timestamp;
+        step.name = event.label || step.name;
+        currentStep = event.stepNumber;
+        break;
+      case "complete":
+        step.status = "completed";
+        step.completedAt = event.timestamp;
+        if (step.startedAt) {
+          step.durationSeconds = (Date.parse(event.timestamp) - Date.parse(step.startedAt)) / 1000;
+        }
+        break;
+      case "skip":
+        step.status = "skipped";
+        step.completedAt = event.timestamp;
+        break;
+      case "error":
+        step.status = "failed";
+        step.completedAt = event.timestamp;
+        step.error = event.label;
+        break;
+    }
+  }
+
+  return { steps, currentStep, totalSteps };
+}
+
+/**
+ * Read the last N lines of a log file.
+ */
+export async function tailLog(logPath: string, lines = 200): Promise<string[]> {
+  try {
+    const content = await readFile(logPath, "utf8");
+    const allLines = content.split("\n");
+    return allLines.slice(-lines).filter(l => l.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Get log file size for polling optimization.
+ */
+export async function logFileSize(logPath: string): Promise<number> {
+  try {
+    const s = await stat(logPath);
+    return s.size;
+  } catch {
+    return 0;
+  }
 }
 
 function normalizeSlug(input: string) {
