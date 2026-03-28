@@ -13,6 +13,7 @@ npm run dev                  # Start web studio
 npm run build                # Production build
 npm run lint                 # ESLint
 npm run job:run -- <job-id>  # Run a paper job
+npm run job:validate -- <workspace-path> [repo-name]  # Validate generated workspace
 bash Paper2Agent.sh --project_dir <dir> --github_url <repo>
 bash scripts/check-publish-safety.sh   # Pre-push audit
 ```
@@ -60,8 +61,8 @@ Evolution store with time-decay JSONL. Stage-specific prompt overlays. Cross-run
 ### Phase 6 — Data Acquisition (DONE)
 Dataset resolver (HuggingFace/Zenodo/UCI/Kaggle/URL). Cached downloader. Synthetic proxy generator (tabular/text/image/time-series/graph). Integrated into step 9 pre-flight.
 
-### Phase 7 — Production (NEXT)
-Multi-paper job queuing. Result dashboards. API for external consumers. Deployment packaging.
+### Phase 7 — Production (IN PROGRESS)
+Self-healing pipeline with auto-retry. User feedback API. Workspace validation. Step-level progress tracking. Log streaming API.
 
 ## Critical Constraints
 - **Never** reveal or return stored provider keys.

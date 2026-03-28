@@ -10,7 +10,8 @@
     "prestart": "node scripts/ensure-lightningcss-runtime.js",
     "start": "next start",
     "lint": "eslint .",
-    "job:run": "node --import tsx scripts/run-paper-job.ts"
+    "job:run": "node --import tsx scripts/run-paper-job.ts",
+    "job:validate": "node --import tsx scripts/validate-workspace.ts"
   },
   "dependencies": {
     "@google/genai": "^1.22.0",

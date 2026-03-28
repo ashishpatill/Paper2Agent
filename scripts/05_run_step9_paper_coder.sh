@@ -72,7 +72,7 @@ fi
 
 # Inject cross-run learning overlay
 export evolution_overlay
-evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 9 "$repo_name")"
+evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 9 "$github_repo_name")"
 
 ENVSUBST_BIN="$(require_cli envsubst)"
 CLAUDE_BIN="$(require_cli claude)"
