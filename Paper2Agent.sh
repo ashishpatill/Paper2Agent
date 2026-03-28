@@ -4,7 +4,7 @@ set -euo pipefail
 # Verbose progress functions
 VERBOSE=${VERBOSE:-1}
 START_TIME=$(date +%s)
-TOTAL_STEPS=16  # 6 main steps + 5 original substeps + 5 implementation substeps + 1 coverage step
+TOTAL_STEPS=17  # 6 main steps + 5 original substeps + 5 implementation substeps + 1 MCP re-wrap + 1 coverage step
 
 log_progress() {
     local step_num=$1
@@ -126,7 +126,7 @@ CLONE_STATUS="not run"
 FOLDERS_STATUS="not run"
 CONTEXT7_STATUS="not run"
 MCP_STATUS="not run"
-STEP_STATUS_LIST=("unused" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run")
+STEP_STATUS_LIST=("unused" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run" "not run")
 STEP_SKIP_EXIT_CODE=10
 
 # 1. Setup project (decide if we should run by checking marker)
@@ -187,7 +187,7 @@ else
 fi
 
 # 5: Core Paper2Agent pipeline steps
-for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
   OUT="$MAIN_DIR/claude_outputs/step${i}_output.json"
   MARK="$MAIN_DIR/.pipeline/05_step${i}_done"
 
@@ -202,9 +202,10 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
     7) STEP_NAME="Run benchmark assessment" ;;
     8) STEP_NAME="Gap analysis (coverage scoring)" ;;
     9) STEP_NAME="Paper coder (implement gaps)" ;;
-    10) STEP_NAME="Experiment runner" ;;
+    10) STEP_NAME="Experiment runner (sandboxed)" ;;
     11) STEP_NAME="Results comparator" ;;
     12) STEP_NAME="Fix loop (convergence iteration)" ;;
+    13) STEP_NAME="MCP re-wrap (implementation tools)" ;;
   esac
 
   if [[ -f "$MARK" ]]; then
@@ -233,6 +234,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
       10) bash $SCRIPT_DIR/scripts/05_run_step10_experiment_runner.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
       11) bash $SCRIPT_DIR/scripts/05_run_step11_results_comparator.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
       12) bash $SCRIPT_DIR/scripts/05_run_step12_fix_loop.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+      13) bash $SCRIPT_DIR/scripts/05_run_step13_mcp_rewrap.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
     esac
     step_exit_code=$?
     set -e
@@ -275,7 +277,7 @@ printf "02 Clone repository: %s\n" "$CLONE_STATUS" >&2
 printf "03 Prepare folders: %s\n" "$FOLDERS_STATUS" >&2
 printf "04 Add context MCP: %s\n" "$CONTEXT7_STATUS" >&2
 
-for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
   case $i in
     1) STEP_DESC="Setup env & scan" ;;
     2) STEP_DESC="Execute tutorials" ;;
@@ -289,6 +291,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
     10) STEP_DESC="Experiment runner" ;;
     11) STEP_DESC="Results comparator" ;;
     12) STEP_DESC="Fix loop" ;;
+    13) STEP_DESC="MCP re-wrap" ;;
   esac
   printf "05.%02d %s: %s\n" "$i" "$STEP_DESC" "${STEP_STATUS_LIST[$i]}" >&2
 done
