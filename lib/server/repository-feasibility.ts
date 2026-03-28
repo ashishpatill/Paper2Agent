@@ -84,7 +84,9 @@ export async function assessRepositoryImplementability(options: {
   notes?: string;
 }) {
   const repoContext = await fetchRepositoryContext(options.repositoryUrl);
-  const combinedContext = compactText(
+
+  // Separate context: setup/readme (authoritative for blocking) vs reported results (informational)
+  const setupContext = compactText(
     [
       options.analysis.title,
       options.analysis.abstract,
@@ -97,6 +99,16 @@ export async function assessRepositoryImplementability(options: {
       .join("\n\n")
       .toLowerCase()
   );
+
+  // Summarise reported results as plain text for secondary scanning
+  const resultsContext = compactText(
+    (options.analysis.reported_results ?? [])
+      .map((r) => `${r.experiment} ${r.metric} ${r.value} ${r.condition ?? ""}`)
+      .join(" ")
+      .toLowerCase()
+  );
+
+  const combinedContext = setupContext;
 
   const blockedPatterns = [
     /\b(?:8|16|32|64)\s*[x×]\s*(?:h100|a100|b200|mi300|tpu ?v?4|tpu ?v?5)\b/gi,
@@ -139,6 +151,25 @@ export async function assessRepositoryImplementability(options: {
         "You may get code scaffolding and reports, but not full local reproduction."
       ],
       evidence: riskyEvidence,
+      checkedAt: new Date().toISOString()
+    } satisfies ImplementabilityAssessment;
+  }
+
+  // Secondary scan: large VRAM/memory numbers appearing only in reported results.
+  // These are benchmark figures (e.g. GPT-3 175B experiments) — not requirements for
+  // all experiments. Flag as risky so the user knows some results won't be reproducible locally.
+  const resultsBlockedEvidence = collectEvidence(resultsContext, blockedPatterns);
+  if (resultsBlockedEvidence.length > 0) {
+    return {
+      verdict: "risky",
+      summary:
+        "Some reported results require very large hardware (e.g. 100B+ parameter models). The core implementation may still be reproducible locally using smaller model variants.",
+      reasons: [
+        "The paper reports experiments on models that need hundreds of GB of VRAM (e.g. GPT-3 175B).",
+        "Smaller model experiments in the same paper (e.g. RoBERTa, GPT-2) should run on normal hardware.",
+        "Paper2Agent will attempt the locally-feasible subset."
+      ],
+      evidence: resultsBlockedEvidence,
       checkedAt: new Date().toISOString()
     } satisfies ImplementabilityAssessment;
   }
