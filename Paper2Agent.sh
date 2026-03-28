@@ -220,38 +220,133 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
     fi
 
     log_progress $((4+i)) "$STEP_NAME" "start"
-    set +e
-    case $i in
-      1) bash $SCRIPT_DIR/scripts/05_run_step1_setup_env.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" "$TUTORIAL_FILTER" ;;
-      2) bash $SCRIPT_DIR/scripts/05_run_step2_execute_tutorials.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
-      3) bash $SCRIPT_DIR/scripts/05_run_step3_extract_tools.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
-      4) bash $SCRIPT_DIR/scripts/05_run_step4_wrap_mcp.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-      5) bash $SCRIPT_DIR/scripts/05_run_step5_generate_coverage.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-      6) bash $SCRIPT_DIR/scripts/05_run_step6_extract_benchmarks.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-      7) bash $SCRIPT_DIR/scripts/05_run_step7_benchmark_assessment.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-      8) bash $SCRIPT_DIR/scripts/05_run_step8_gap_analysis.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-      9) bash $SCRIPT_DIR/scripts/05_run_step9_paper_coder.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-      10) bash $SCRIPT_DIR/scripts/05_run_step10_experiment_runner.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-      11) bash $SCRIPT_DIR/scripts/05_run_step11_results_comparator.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-      12) bash $SCRIPT_DIR/scripts/05_run_step12_fix_loop.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-      13) bash $SCRIPT_DIR/scripts/05_run_step13_mcp_rewrap.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-    esac
-    step_exit_code=$?
-    set -e
 
-    if [[ $step_exit_code -eq $STEP_SKIP_EXIT_CODE ]]; then
-      log_progress $((4+i)) "$STEP_NAME" "skip"
-      STEP_STATUS_LIST[$i]="skipped"
-      continue
+    MAX_STEP_RETRIES=2
+    step_attempt=0
+    step_succeeded=false
+
+    while [[ $step_attempt -le $MAX_STEP_RETRIES ]]; do
+      step_attempt=$((step_attempt + 1))
+      if [[ $step_attempt -gt 1 ]]; then
+        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🔄 Step $i retry $((step_attempt-1))/$MAX_STEP_RETRIES: $STEP_NAME" >&2
+      fi
+
+      set +e
+      case $i in
+        1) bash $SCRIPT_DIR/scripts/05_run_step1_setup_env.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" "$TUTORIAL_FILTER" ;;
+        2) bash $SCRIPT_DIR/scripts/05_run_step2_execute_tutorials.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+        3) bash $SCRIPT_DIR/scripts/05_run_step3_extract_tools.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+        4) bash $SCRIPT_DIR/scripts/05_run_step4_wrap_mcp.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+        5) bash $SCRIPT_DIR/scripts/05_run_step5_generate_coverage.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+        6) bash $SCRIPT_DIR/scripts/05_run_step6_extract_benchmarks.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+        7) bash $SCRIPT_DIR/scripts/05_run_step7_benchmark_assessment.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+        8) bash $SCRIPT_DIR/scripts/05_run_step8_gap_analysis.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+        9) bash $SCRIPT_DIR/scripts/05_run_step9_paper_coder.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+        10) bash $SCRIPT_DIR/scripts/05_run_step10_experiment_runner.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+        11) bash $SCRIPT_DIR/scripts/05_run_step11_results_comparator.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+        12) bash $SCRIPT_DIR/scripts/05_run_step12_fix_loop.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+        13) bash $SCRIPT_DIR/scripts/05_run_step13_mcp_rewrap.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+      esac
+      step_exit_code=$?
+      set -e
+
+      # Skip exit code — not a failure
+      if [[ $step_exit_code -eq $STEP_SKIP_EXIT_CODE ]]; then
+        log_progress $((4+i)) "$STEP_NAME" "skip"
+        STEP_STATUS_LIST[$i]="skipped"
+        step_succeeded=true
+        break
+      fi
+
+      # Success
+      if [[ $step_exit_code -eq 0 ]]; then
+        step_succeeded=true
+        break
+      fi
+
+      # Failed — attempt auto-diagnosis before retry
+      if [[ $step_attempt -le $MAX_STEP_RETRIES ]]; then
+        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🔧 Step $i failed (exit $step_exit_code), diagnosing..." >&2
+
+        # Read last lines of step output for diagnosis
+        STEP_OUTPUT="$MAIN_DIR/claude_outputs/step${i}_output.json"
+        STEP_LOG=""
+        if [[ -f "$STEP_OUTPUT" ]]; then
+          STEP_LOG=$(tail -30 "$STEP_OUTPUT" 2>/dev/null || true)
+        fi
+
+        # Auto-fix common failures
+        fix_applied=false
+
+        # Check for missing Python packages
+        if echo "$STEP_LOG" | grep -qi "ModuleNotFoundError\|ImportError\|No module named"; then
+          missing_module=$(echo "$STEP_LOG" | grep -oi "No module named '[^']*'" | head -1 | sed "s/No module named '//;s/'//")
+          if [[ -n "$missing_module" ]]; then
+            echo "  → Auto-fix: installing missing module '$missing_module'" >&2
+            ENV_PATH="$MAIN_DIR/${repo_name}-env"
+            if [[ -d "$ENV_PATH" ]]; then
+              "$ENV_PATH/bin/pip" install "$missing_module" 2>/dev/null || pip3 install "$missing_module" 2>/dev/null || true
+            else
+              pip3 install "$missing_module" 2>/dev/null || true
+            fi
+            fix_applied=true
+          fi
+        fi
+
+        # Check for Claude auth errors — not retryable
+        if echo "$STEP_LOG" | grep -qi "authentication_error\|OAuth token.*expired"; then
+          echo "  → Claude authentication error — cannot auto-fix, stopping" >&2
+          break
+        fi
+
+        # Check for disk space — not retryable
+        if echo "$STEP_LOG" | grep -qi "No space left on device"; then
+          echo "  → Disk full — cannot auto-fix, stopping" >&2
+          break
+        fi
+
+        # Check for permission errors
+        if echo "$STEP_LOG" | grep -qi "Permission denied"; then
+          echo "  → Permission error — attempting chmod fix" >&2
+          chmod -R u+rw "$MAIN_DIR" 2>/dev/null || true
+          fix_applied=true
+        fi
+
+        # Remove marker so step reruns
+        rm -f "$MARK"
+
+        if [[ "$fix_applied" == "false" ]]; then
+          echo "  → No specific fix found, retrying step anyway" >&2
+        fi
+      fi
+    done
+
+    if [[ "$step_succeeded" == "true" ]]; then
+      if [[ "${STEP_STATUS_LIST[$i]}" != "skipped" ]]; then
+        if [[ $step_attempt -gt 1 ]]; then
+          log_progress $((4+i)) "$STEP_NAME" "complete"
+          STEP_STATUS_LIST[$i]="executed (after $((step_attempt-1)) retry)"
+        else
+          log_progress $((4+i)) "$STEP_NAME" "complete"
+          STEP_STATUS_LIST[$i]="executed"
+        fi
+      fi
+    else
+      # All retries exhausted — log but continue pipeline for non-critical steps
+      # Steps 2, 5, 6, 7 are non-critical (tutorials, coverage, benchmarks)
+      NON_CRITICAL_STEPS="2 5 6 7"
+      if echo "$NON_CRITICAL_STEPS" | grep -qw "$i"; then
+        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ⚠️  Step $i failed after $MAX_STEP_RETRIES retries — skipping (non-critical)" >&2
+        log_progress $((4+i)) "$STEP_NAME" "error"
+        STEP_STATUS_LIST[$i]="failed (non-critical, skipped)"
+        touch "$MARK"  # Mark as done so pipeline continues
+      else
+        log_progress $((4+i)) "$STEP_NAME" "error"
+        STEP_STATUS_LIST[$i]="failed"
+        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ❌ Step $i failed after $MAX_STEP_RETRIES retries — stopping pipeline" >&2
+        exit $step_exit_code
+      fi
     fi
-
-    if [[ $step_exit_code -ne 0 ]]; then
-      log_progress $((4+i)) "$STEP_NAME" "error"
-      exit $step_exit_code
-    fi
-
-    log_progress $((4+i)) "$STEP_NAME" "complete"
-    STEP_STATUS_LIST[$i]="executed"
   fi
 done
 
