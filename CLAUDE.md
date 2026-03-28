@@ -51,13 +51,13 @@ Bug fixes: atomic job writes, graceful tutorial skip, rg→search_text, non-fata
 ### Phase 3 — Implementation Track (DONE)
 Steps 8-12: gap analysis, paper coder, experiment runner, results comparator, fix loop. Types: `ReportedResult`, `GapAnalysis`, `ExperimentAttempt`, `ResultsComparison`, `FixLoopState`.
 
-### Phase 4 — Sandbox & Safety (NEXT)
-Docker sandbox for experiment isolation. Anti-fabrication registry (VerifiedRegistry). MCP re-wrap after implementation track. Network policies for sandboxed execution.
+### Phase 4 — Sandbox & Safety (DONE)
+Docker sandbox for experiment isolation. Anti-fabrication registry (VerifiedRegistry). MCP re-wrap step 13. Network policies (none/setup_only/full).
 
-### Phase 5 — Cross-Run Learning (PLANNED)
-Evolution store with time-decay JSONL. Stage-specific prompt overlays. Cross-run skill transfer (MetaClaw pattern). Lesson extraction from failures.
+### Phase 5 — Cross-Run Learning (DONE)
+Evolution store with time-decay JSONL. Stage-specific prompt overlays. Cross-run skill transfer. Lesson extraction post-run, overlay injection into steps 8-12.
 
-### Phase 6 — Data Acquisition (PLANNED)
+### Phase 6 — Data Acquisition (NEXT)
 Auto-download from HuggingFace/Zenodo/UCI. Synthetic proxy dataset generation. Stratified subsampling for large corpora. Dataset caching.
 
 ### Phase 7 — Production (PLANNED)

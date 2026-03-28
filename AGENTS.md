@@ -70,10 +70,11 @@ Foundation, pipeline hardening, implementation track (steps 8-12).
 - MCP re-wrap after implementation track (step 13)
 - Network policies for sandboxed execution (none/setup_only/full)
 
-### Phase 5: Cross-Run Learning
-- Evolution store with time-decay
-- Stage-specific prompt overlays
-- Cross-run skill transfer
+### Phase 5: Cross-Run Learning (COMPLETE)
+- Evolution store with time-decay JSONL (`lib/server/evolution-store.ts`)
+- Stage-specific prompt overlays (`lib/server/prompt-overlay.ts`)
+- Cross-run skill transfer (`lib/server/skill-transfer.ts`)
+- Pipeline integration: lessons extracted post-run, overlays injected into steps 8-12
 
 ### Phase 6: Data Acquisition
 - Auto-download from HuggingFace/Zenodo

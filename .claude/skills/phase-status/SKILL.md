@@ -36,12 +36,12 @@ Report on the Paper2Agent phased delivery status.
 - [x] MCP re-wrap after implementation track (step 13)
 - [x] Network policies for sandboxed execution (none/setup_only/full modes)
 
-### Phase 5 — Cross-Run Learning (NEXT)
-- [ ] Evolution store with time-decay JSONL
-- [ ] Stage-specific prompt overlays
-- [ ] Cross-run skill transfer
+### Phase 5 — Cross-Run Learning
+- [x] Evolution store with time-decay JSONL (`lib/server/evolution-store.ts`)
+- [x] Stage-specific prompt overlays (`lib/server/prompt-overlay.ts`)
+- [x] Cross-run skill transfer (`lib/server/skill-transfer.ts`)
 
-### Phase 6 — Data Acquisition
+### Phase 6 — Data Acquisition (NEXT)
 - [ ] Auto-download from HuggingFace/Zenodo
 - [ ] Synthetic proxy dataset generation
 - [ ] Dataset caching and subsampling
