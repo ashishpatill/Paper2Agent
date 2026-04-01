@@ -7,7 +7,7 @@ import type { JobRecord, JobStatus, ResumableJobStatus } from "./types";
 
 export type JobControlAction = "pause" | "resume" | "stop";
 
-const ACTIVE_JOB_STATUSES = new Set<JobStatus>(["queued", "analyzing", "running_pipeline"]);
+const ACTIVE_JOB_STATUSES = new Set<JobStatus>(["analyzing", "running_pipeline"]);
 const TERMINAL_JOB_STATUSES = new Set<JobStatus>([
   "needs_repo",
   "stopped",
@@ -76,10 +76,6 @@ function isStaleInFlightJob(job: JobRecord) {
   const ageMs = Date.now() - Date.parse(lastActivity);
   if (!Number.isFinite(ageMs)) {
     return false;
-  }
-
-  if (job.status === "queued") {
-    return ageMs > 2 * 60_000;
   }
 
   if (job.status === "analyzing") {
@@ -154,6 +150,10 @@ export async function reconcileJob(jobId: string) {
 
 export function isTerminalJobStatus(status: JobStatus) {
   return TERMINAL_JOB_STATUSES.has(status);
+}
+
+export function isActiveWorkerJobStatus(status: JobStatus) {
+  return status === "analyzing" || status === "running_pipeline" || status === "paused";
 }
 
 function signalJobProcess(pid: number, signal: NodeJS.Signals) {
@@ -240,7 +240,7 @@ export async function controlJob(jobId: string, action: JobControlAction) {
   }));
 }
 
-export async function listJobs(limit = 12) {
+async function loadJobs() {
   await ensureAppDirectories();
   const entries = await readdir(jobsRoot, { withFileTypes: true });
   const jobs = await Promise.all(
@@ -251,6 +251,14 @@ export async function listJobs(limit = 12) {
 
   return jobs
     .filter((job): job is JobRecord => Boolean(job))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, limit);
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function listAllJobs() {
+  return loadJobs();
+}
+
+export async function listJobs(limit = 12) {
+  const jobs = await loadJobs();
+  return jobs.slice(0, limit);
 }
