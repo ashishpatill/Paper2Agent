@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { ensureAppDirectories, uploadsRoot } from "../lib/server/fs";
 import { getJob, updateJob } from "../lib/server/jobs";
+import { scheduleQueuedJobs } from "../lib/server/job-runner";
 import { analyzePaper, chooseProvider } from "../lib/server/llm";
 import { extractPaperFromPdf, extractPaperFromUrl } from "../lib/server/paper-intake";
 import {
@@ -169,6 +170,7 @@ async function main() {
         progressPercent: 100,
         error: "No Gemini or OpenRouter API key is configured."
       }));
+      await scheduleQueuedJobs().catch(() => undefined);
       return;
     }
 
@@ -262,6 +264,7 @@ async function main() {
         currentStage: "A repository could not be confidently identified from the paper.",
         progressPercent: 68
       }));
+      await scheduleQueuedJobs().catch(() => undefined);
       return;
     }
 
@@ -295,6 +298,7 @@ async function main() {
         progressPercent: 70,
         error: implementability.summary
       }));
+      await scheduleQueuedJobs().catch(() => undefined);
       return;
     }
 
@@ -359,6 +363,7 @@ async function main() {
           diagnosis ||
           (error instanceof Error ? error.message : "Paper2Agent pipeline failed unexpectedly.")
       }));
+      await scheduleQueuedJobs().catch(() => undefined);
       return;
     }
 
@@ -378,6 +383,7 @@ async function main() {
       currentStage: "The workspace is ready.",
       progressPercent: 100
     }));
+    await scheduleQueuedJobs().catch(() => undefined);
   } finally {
     clearInterval(heartbeat);
   }
@@ -402,6 +408,7 @@ main().catch(async (error) => {
         progressPercent: 100,
         error: error instanceof Error ? error.message : "Unexpected error"
       })).catch(() => undefined);
+      await scheduleQueuedJobs().catch(() => undefined);
     }
   }
 

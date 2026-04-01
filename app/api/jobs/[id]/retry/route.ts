@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
 
 import { ensureAppDirectories, uploadsRoot } from "@/lib/server/fs";
 import { createJob, getJob } from "@/lib/server/jobs";
-import { spawnJobWorker } from "@/lib/server/job-runner";
+import { scheduleQueuedJobs } from "@/lib/server/job-runner";
 import type { JobRecord } from "@/lib/server/types";
 
 export async function POST(
@@ -31,7 +31,7 @@ export async function POST(
     createdAt: now,
     updatedAt: now,
     status: "queued",
-    currentStage: "Queued for the background worker.",
+    currentStage: "Queued. Waiting for an available worker slot.",
     progressPercent: 12,
     lastHeartbeatAt: now,
     lastProgressAt: now,
@@ -56,7 +56,7 @@ export async function POST(
   await createJob(retryJob);
 
   try {
-    await spawnJobWorker(id);
+    await scheduleQueuedJobs();
   } catch (error) {
     return new NextResponse(
       error instanceof Error ? error.message : "Failed to start background worker.",
@@ -64,5 +64,5 @@ export async function POST(
     );
   }
 
-  return NextResponse.json(retryJob, { status: 201 });
+  return NextResponse.json((await getJob(id)) || retryJob, { status: 201 });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { controlJob, type JobControlAction } from "@/lib/server/jobs";
+import { scheduleQueuedJobs } from "@/lib/server/job-runner";
 
 export async function POST(
   request: Request,
@@ -17,6 +18,9 @@ export async function POST(
 
   try {
     const job = await controlJob(id, body.action);
+    if (body.action === "stop") {
+      await scheduleQueuedJobs();
+    }
     return NextResponse.json(job);
   } catch (error) {
     return new NextResponse(
