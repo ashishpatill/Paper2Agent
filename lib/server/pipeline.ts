@@ -295,7 +295,9 @@ export async function runPipeline(options: {
         "--paper_title",
         options.paperTitle || "",
         "--notes",
-        options.notes || ""
+        options.notes || "",
+        "--job_id",
+        options.jobId
       ],
       {
         cwd: process.cwd(),

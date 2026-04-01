@@ -63,6 +63,7 @@ API_KEY=""
 PAPER_URL=""
 PAPER_TITLE=""
 OPERATOR_NOTES=""
+PAPER2AGENT_JOB_ID=""
 RUN_BENCHMARK=0
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -92,6 +93,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --notes)
       OPERATOR_NOTES="$2"
+      shift 2
+      ;;
+    --job_id)
+      PAPER2AGENT_JOB_ID="$2"
       shift 2
       ;;
     --benchmark)
@@ -145,11 +150,41 @@ cd "$MAIN_DIR"
 
 export paper_url="$PAPER_URL"
 export paper_title="$PAPER_TITLE"
+BASE_OPERATOR_NOTES="$OPERATOR_NOTES"
 export operator_notes="$OPERATOR_NOTES"
+export paper2agent_job_id="$PAPER2AGENT_JOB_ID"
 
 # Compute repo name early so we can check clone artifact
 repo_name=$(basename "$GITHUB_REPO_URL" .git)
 export github_repo_name="$repo_name"
+
+refresh_operator_notes_for_step() {
+  local displayed_step_num="$1"
+  export operator_notes="$BASE_OPERATOR_NOTES"
+
+  if [[ -z "$paper2agent_job_id" ]]; then
+    return
+  fi
+
+  local npx_bin
+  npx_bin="$(command -v npx 2>/dev/null || echo "")"
+  if [[ -z "$npx_bin" ]]; then
+    return
+  fi
+
+  local feedback_overlay
+  feedback_overlay="$("$npx_bin" tsx "$SCRIPT_DIR/scripts/consume-feedback.ts" "$paper2agent_job_id" "$displayed_step_num" 2>/dev/null || true)"
+
+  if [[ -z "$feedback_overlay" ]]; then
+    return
+  fi
+
+  if [[ -n "$BASE_OPERATOR_NOTES" ]]; then
+    export operator_notes="${BASE_OPERATOR_NOTES}"$'\n\n'"${feedback_overlay}"
+  else
+    export operator_notes="$feedback_overlay"
+  fi
+}
 
 # 2. Clone repo
 if [[ -f "$MAIN_DIR/.pipeline/02_clone_done" ]]; then
@@ -219,6 +254,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
         continue
     fi
 
+    refresh_operator_notes_for_step $((4+i))
     log_progress $((4+i)) "$STEP_NAME" "start"
 
     # Per-step timeout thresholds (seconds) — warnings only, not kills
