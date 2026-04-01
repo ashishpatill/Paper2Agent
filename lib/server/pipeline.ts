@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 
 import { logsRoot, workspacesRoot } from "./fs";
 import type { PipelineProgress, StepStatus } from "./types";
+import { PIPELINE_STEP_DEFINITIONS } from "../pipeline-steps";
 
 export interface PipelineProgressEvent {
   line: string;
@@ -14,40 +15,33 @@ export interface PipelineProgressEvent {
   heartbeat?: string;
 }
 
-// Step names for the full pipeline (steps 1-13 in the core loop, plus setup steps)
-const STEP_NAMES: Record<number, string> = {
-  1: "Setup environment & scan tutorials",
-  2: "Execute tutorial notebooks",
-  3: "Extract tools from tutorials",
-  4: "Wrap tools in MCP server",
-  5: "Generate coverage & quality reports",
-  6: "Extract benchmark questions",
-  7: "Run benchmark assessment",
-  8: "Gap analysis (coverage scoring)",
-  9: "Paper coder (implement gaps)",
-  10: "Experiment runner (sandboxed)",
-  11: "Results comparator",
-  12: "Fix loop (convergence iteration)",
-  13: "MCP re-wrap (implementation tools)",
-};
+const STEP_NAMES = Object.fromEntries(
+  PIPELINE_STEP_DEFINITIONS.map((step) => [step.stepNumber, step.name])
+) as Record<number, string>;
+
+export { PIPELINE_STEP_DEFINITIONS };
 
 /**
  * Build a PipelineProgress snapshot from accumulated step events.
  */
 export function buildPipelineProgress(
   events: { stepNumber: number; phase: string; label: string; timestamp: string }[],
-  totalSteps = 17
+  totalSteps = PIPELINE_STEP_DEFINITIONS.length
 ): PipelineProgress {
-  const steps: StepStatus[] = [];
+  const maxStepNumber = Math.max(
+    totalSteps,
+    ...PIPELINE_STEP_DEFINITIONS.map((step) => step.stepNumber),
+    ...events.map((event) => event.stepNumber)
+  );
 
-  // Initialize all 13 core steps as pending
-  for (let i = 1; i <= 13; i++) {
-    steps.push({
-      stepNumber: i,
-      name: STEP_NAMES[i] || `Step ${i}`,
-      status: "pending",
-    });
-  }
+  const steps: StepStatus[] = Array.from({ length: maxStepNumber }, (_, index) => {
+    const stepNumber = index + 1;
+    return {
+      stepNumber,
+      name: STEP_NAMES[stepNumber] || `Step ${stepNumber}`,
+      status: "pending"
+    };
+  });
 
   // Apply events in order
   let currentStep: number | undefined;

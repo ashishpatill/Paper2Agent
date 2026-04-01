@@ -8,24 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_STEPS: Array<{ number: number; name: string }> = [
-  { number: 1, name: "Setup project" },
-  { number: 2, name: "Clone repository" },
-  { number: 3, name: "Create folders" },
-  { number: 4, name: "Add Context7 MCP" },
-  { number: 5.1, name: "Env + Tutorial scan" },
-  { number: 5.2, name: "Execute tutorials" },
-  { number: 5.3, name: "Extract tools" },
-  { number: 5.4, name: "Wrap MCP server" },
-  { number: 5.5, name: "Coverage & quality" },
-  { number: 5.8, name: "Gap analysis" },
-  { number: 5.9, name: "Paper coder" },
-  { number: 5.10, name: "Experiment runner" },
-  { number: 5.11, name: "Results comparator" },
-  { number: 5.12, name: "Fix loop" },
-  { number: 6, name: "Launch MCP server" }
-];
+import { PIPELINE_STEP_DEFINITIONS } from "@/lib/pipeline-steps";
 
 export function PipelineTimeline({ job: initialJob }: { job: JobRecord }) {
   const [job, setJob] = useState(initialJob);
@@ -42,7 +25,7 @@ export function PipelineTimeline({ job: initialJob }: { job: JobRecord }) {
 
   const steps = job.pipelineProgress?.steps;
   const currentStep = job.pipelineProgress?.currentStep;
-  const totalSteps = job.pipelineProgress?.totalSteps ?? DEFAULT_STEPS.length;
+  const totalSteps = job.pipelineProgress?.totalSteps ?? PIPELINE_STEP_DEFINITIONS.length;
   const completedCount = steps?.filter((s) => s.status === "completed").length ?? 0;
   const progressPct = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
@@ -63,13 +46,13 @@ export function PipelineTimeline({ job: initialJob }: { job: JobRecord }) {
         <div className="space-y-1">
           {steps && steps.length > 0
             ? steps.map((step) => <StepRow key={step.stepNumber} step={step} isCurrent={step.stepNumber === currentStep} />)
-            : DEFAULT_STEPS.map((s) => (
+            : PIPELINE_STEP_DEFINITIONS.map((s) => (
                 <div
-                  key={s.number}
+                  key={s.stepNumber}
                   className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground"
                 >
                   <Circle className="h-4 w-4 shrink-0 opacity-40" />
-                  <span className="w-10 shrink-0 tabular-nums text-xs">{s.number}</span>
+                  <span className="w-10 shrink-0 tabular-nums text-xs">{s.stepNumber}</span>
                   <span>{s.name}</span>
                 </div>
               ))}

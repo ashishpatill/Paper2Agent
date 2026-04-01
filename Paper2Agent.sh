@@ -4,7 +4,7 @@ set -euo pipefail
 # Verbose progress functions
 VERBOSE=${VERBOSE:-1}
 START_TIME=$(date +%s)
-TOTAL_STEPS=17  # 6 main steps + 5 original substeps + 5 implementation substeps + 1 MCP re-wrap + 1 coverage step
+TOTAL_STEPS=18  # 4 setup steps + 13 core pipeline steps + launch MCP
 
 log_progress() {
     local step_num=$1

@@ -1,0 +1,20 @@
+export const PIPELINE_STEP_DEFINITIONS: Array<{ stepNumber: number; name: string }> = [
+  { stepNumber: 1, name: "Setup project environment" },
+  { stepNumber: 2, name: "Clone GitHub repository" },
+  { stepNumber: 3, name: "Prepare working directories" },
+  { stepNumber: 4, name: "Add context MCP server" },
+  { stepNumber: 5, name: "Setup Python environment & scan tutorials" },
+  { stepNumber: 6, name: "Execute tutorial notebooks" },
+  { stepNumber: 7, name: "Extract tools from tutorials" },
+  { stepNumber: 8, name: "Wrap tools in MCP server" },
+  { stepNumber: 9, name: "Generate code coverage & quality reports" },
+  { stepNumber: 10, name: "Extract benchmark questions" },
+  { stepNumber: 11, name: "Run benchmark assessment" },
+  { stepNumber: 12, name: "Gap analysis (coverage scoring)" },
+  { stepNumber: 13, name: "Paper coder (implement gaps)" },
+  { stepNumber: 14, name: "Experiment runner (sandboxed)" },
+  { stepNumber: 15, name: "Results comparator" },
+  { stepNumber: 16, name: "Fix loop (convergence iteration)" },
+  { stepNumber: 17, name: "MCP re-wrap (implementation tools)" },
+  { stepNumber: 18, name: "Launch MCP server" }
+];
