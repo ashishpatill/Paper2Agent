@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { nanoid } from "nanoid";
 
 import { getJob, updateJob } from "@/lib/server/jobs";
 import type { UserFeedback } from "@/lib/server/types";
@@ -26,6 +27,7 @@ export async function POST(
   }
 
   const feedback: UserFeedback = {
+    id: nanoid(8),
     timestamp: new Date().toISOString(),
     message,
     action: action || "hint",

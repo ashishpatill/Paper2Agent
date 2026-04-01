@@ -215,11 +215,14 @@ export interface JobRecord {
 }
 
 export interface UserFeedback {
+  id: string;
   timestamp: string;
   message: string;
   action?: "hint" | "skip_step" | "restart_step" | "adjust_config";
   stepNumber?: number;
   consumed: boolean;
+  consumedAt?: string;
+  consumedByStep?: number;
 }
 
 export interface ValidationReport {
