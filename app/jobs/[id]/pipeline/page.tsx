@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 
-import { getJob } from "@/lib/server/jobs";
+import { reconcileJob } from "@/lib/server/jobs";
 import { PipelineTimeline } from "@/components/pipeline-timeline";
 import { LogViewer } from "@/components/log-viewer";
 
@@ -10,7 +10,7 @@ export default async function PipelinePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const job = await getJob(id);
+  const job = await reconcileJob(id);
   if (!job) notFound();
 
   return (

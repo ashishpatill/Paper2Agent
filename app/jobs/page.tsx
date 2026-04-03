@@ -5,9 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listJobs } from "@/lib/server/jobs";
+import { attachWorkspaceAssessment } from "@/lib/server/workspace-assessment";
+import {
+  workspaceAssessmentBadgeVariant,
+  workspaceAssessmentLabel
+} from "@/components/workspace-assessment-card";
 
 export default async function JobsListPage() {
-  const jobs = await listJobs();
+  const jobs = await Promise.all((await listJobs()).map((job) => attachWorkspaceAssessment(job)));
 
   return (
     <div className="space-y-6">
@@ -51,6 +56,7 @@ export default async function JobsListPage() {
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       {job.currentStage && <span>{job.currentStage}</span>}
+                      {job.workspaceAssessment && <span>{job.workspaceAssessment.summary}</span>}
                       {job.repositoryUrl && (
                         <span className="truncate max-w-48">{job.repositoryUrl}</span>
                       )}
@@ -63,6 +69,11 @@ export default async function JobsListPage() {
                         {job.progressPercent}%
                       </span>
                     )}
+                    {job.workspaceAssessment ? (
+                      <Badge variant={workspaceAssessmentBadgeVariant(job.workspaceAssessment.lifecycle)}>
+                        {workspaceAssessmentLabel(job.workspaceAssessment.lifecycle)}
+                      </Badge>
+                    ) : null}
                     <Badge
                       variant={
                         job.status === "completed"

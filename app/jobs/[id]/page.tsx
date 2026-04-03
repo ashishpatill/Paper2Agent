@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { JobActions } from "@/components/job-actions";
-import { getJob } from "@/lib/server/jobs";
+import { reconcileJob } from "@/lib/server/jobs";
+import { attachWorkspaceAssessment } from "@/lib/server/workspace-assessment";
+import {
+  WorkspaceAssessmentCard,
+  workspaceAssessmentBadgeVariant,
+  workspaceAssessmentLabel
+} from "@/components/workspace-assessment-card";
 
 export default async function JobDetailPage({
   params
@@ -15,7 +21,8 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const job = await getJob(id);
+  const storedJob = await reconcileJob(id);
+  const job = storedJob ? await attachWorkspaceAssessment(storedJob) : null;
   if (!job) notFound();
 
   const progress = job.progressPercent ?? STATUS_PROGRESS[job.status] ?? 0;
@@ -34,6 +41,11 @@ export default async function JobDetailPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {job.workspaceAssessment ? (
+            <Badge variant={workspaceAssessmentBadgeVariant(job.workspaceAssessment.lifecycle)}>
+              {workspaceAssessmentLabel(job.workspaceAssessment.lifecycle)}
+            </Badge>
+          ) : null}
           <Badge
             variant={
               job.status === "completed"
@@ -83,6 +95,8 @@ export default async function JobDetailPage({
 
       {/* Actions */}
       <JobActions job={job} />
+
+      {job.workspaceAssessment ? <WorkspaceAssessmentCard assessment={job.workspaceAssessment} /> : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Paper Analysis */}

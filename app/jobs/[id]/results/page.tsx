@@ -1,12 +1,15 @@
 import { notFound } from "next/navigation";
 
-import { getJob } from "@/lib/server/jobs";
+import { reconcileJob } from "@/lib/server/jobs";
 import { loadWorkspaceArtifacts } from "@/lib/server/results";
+import { attachWorkspaceAssessment } from "@/lib/server/workspace-assessment";
 import { CoverageGauge } from "@/components/coverage-gauge";
 import { ResultsTable } from "@/components/results-table";
 import { FixLoopHistory } from "@/components/fix-loop-history";
+import { ReplicationOutcomeCard } from "@/components/replication-outcome-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { WorkspaceAssessmentCard } from "@/components/workspace-assessment-card";
 
 export default async function ResultsPage({
   params
@@ -14,7 +17,8 @@ export default async function ResultsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const job = await getJob(id);
+  const storedJob = await reconcileJob(id);
+  const job = storedJob ? await attachWorkspaceAssessment(storedJob) : null;
   if (!job) notFound();
   const artifacts = await loadWorkspaceArtifacts(job.workspacePath);
 
@@ -39,6 +43,9 @@ export default async function ResultsPage({
         </Card>
       ) : (
         <div className="space-y-6">
+          {job.workspaceAssessment ? <WorkspaceAssessmentCard assessment={job.workspaceAssessment} /> : null}
+          {artifacts.replicationOutcome ? <ReplicationOutcomeCard report={artifacts.replicationOutcome} /> : null}
+
           {/* Gap Analysis */}
           <CoverageGauge analysis={job.analysis!} gapAnalysis={artifacts.gapAnalysis} />
 

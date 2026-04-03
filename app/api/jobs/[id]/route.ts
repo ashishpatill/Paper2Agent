@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getJob, reconcileJob } from "@/lib/server/jobs";
+import { attachWorkspaceAssessment } from "@/lib/server/workspace-assessment";
 
 export async function GET(
   _request: Request,
@@ -15,5 +16,5 @@ export async function GET(
     return new NextResponse("Job not found.", { status: 404 });
   }
 
-  return NextResponse.json(job);
+  return NextResponse.json(await attachWorkspaceAssessment(job));
 }

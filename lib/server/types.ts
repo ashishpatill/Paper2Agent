@@ -212,6 +212,7 @@ export interface JobRecord {
   pipelineProgress?: PipelineProgress;
   userFeedback?: UserFeedback[];
   validationReport?: ValidationReport;
+  workspaceAssessment?: WorkspaceAssessment;
 }
 
 export interface UserFeedback {
@@ -235,4 +236,114 @@ export interface ValidationCheck {
   name: string;
   passed: boolean;
   detail: string;
+}
+
+export interface SetupReadiness {
+  environmentReportFound: boolean;
+  tutorialScanFound: boolean;
+  environmentReady: boolean;
+  tutorialCandidates: number;
+  reusableTutorials: number;
+  environmentName?: string;
+  pythonVersion?: string;
+}
+
+export interface SetupReadinessReport {
+  generatedAt: string;
+  repository: {
+    name: string;
+    path: string;
+    mainCodePaths: string[];
+    notebookPaths: string[];
+  };
+  environment: {
+    reportFound: boolean;
+    ready: boolean;
+    environmentName?: string;
+    pythonVersion?: string;
+    environmentLocation?: string;
+    installationMethod?: string;
+    packageCount?: number;
+    activationCommand?: string;
+    installCommands: string[];
+    validationChecksPassed: number;
+    validationChecksTotal: number;
+  };
+  tutorials: {
+    scanFound: boolean;
+    includeListFound: boolean;
+    success: boolean;
+    successReason?: string;
+    filterApplied?: string;
+    totalScanned: number;
+    includedInTools: number;
+    runnableCandidates: number;
+    includedPaths: string[];
+  };
+  blockers: string[];
+  requirements: string[];
+  nextSteps: string[];
+}
+
+export interface ReplicationOutcomeReport {
+  generatedAt: string;
+  track?: "tutorial" | "implementation" | "hybrid";
+  lifecycle:
+    | "tutorial_only"
+    | "implementation_scaffolded"
+    | "experiments_partial"
+    | "results_compared"
+    | "replication_partial"
+    | "replication_validated"
+    | "replication_blocked";
+  summary: string;
+  implementation: {
+    required: boolean;
+    experimentFiles: number;
+  };
+  experiments: {
+    summaryFound: boolean;
+    total: number;
+    successful: number;
+    partial: number;
+    failed: number;
+    crashed: number;
+  };
+  comparison: {
+    found: boolean;
+    overallMatch?: "strong" | "approximate" | "weak" | "mismatch";
+    matchScore?: number;
+  };
+  fixLoop: {
+    found: boolean;
+    converged?: boolean;
+    currentAttempt?: number;
+    maxAttempts?: number;
+  };
+  validation: {
+    found: boolean;
+    overall?: "pass" | "partial" | "fail";
+  };
+  blockers: string[];
+  nextSteps: string[];
+}
+
+export interface WorkspaceAssessment {
+  lifecycle:
+    | "paper_only"
+    | "repo_required"
+    | "workspace_prepared"
+    | "setup_ready"
+    | "tutorial_track_ready"
+    | "implementation_in_progress"
+    | "results_ready"
+    | "validated_partial"
+    | "validated_full"
+    | "run_failed";
+  summary: string;
+  completedMilestones: string[];
+  remainingMilestones: string[];
+  blockers: string[];
+  requirements: string[];
+  setup: SetupReadiness;
 }

@@ -1,7 +1,13 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { FixLoopState, GapAnalysis, ResultsComparison } from "./types";
+import type {
+  FixLoopState,
+  GapAnalysis,
+  ReplicationOutcomeReport,
+  ResultsComparison,
+  SetupReadinessReport
+} from "./types";
 
 export interface ExperimentResultArtifact {
   experiment: string;
@@ -28,6 +34,8 @@ export interface ExperimentSummaryArtifact {
 }
 
 export interface WorkspaceArtifacts {
+  setupReadiness: SetupReadinessReport | null;
+  replicationOutcome: ReplicationOutcomeReport | null;
   gapAnalysis: GapAnalysis | null;
   resultsComparison: ResultsComparison | null;
   fixLoopState: FixLoopState | null;
@@ -49,6 +57,8 @@ export async function loadWorkspaceArtifacts(
 ): Promise<WorkspaceArtifacts> {
   if (!workspacePath) {
     return {
+      setupReadiness: null,
+      replicationOutcome: null,
       gapAnalysis: null,
       resultsComparison: null,
       fixLoopState: null,
@@ -60,7 +70,9 @@ export async function loadWorkspaceArtifacts(
   const reportsPath = path.join(workspacePath, "reports");
   const experimentResultsPath = path.join(reportsPath, "experiment_results");
 
-  const [gapAnalysis, resultsComparison, fixLoopState, experimentSummary] = await Promise.all([
+  const [setupReadiness, replicationOutcome, gapAnalysis, resultsComparison, fixLoopState, experimentSummary] = await Promise.all([
+    readJsonIfExists<SetupReadinessReport>(path.join(reportsPath, "setup-readiness.json")),
+    readJsonIfExists<ReplicationOutcomeReport>(path.join(reportsPath, "replication-outcome.json")),
     readJsonIfExists<GapAnalysis>(path.join(reportsPath, "gap_analysis.json")),
     readJsonIfExists<ResultsComparison>(path.join(reportsPath, "results_comparison.json")),
     readJsonIfExists<FixLoopState>(path.join(reportsPath, "fix_loop", "fix_loop_state.json")),
@@ -100,6 +112,8 @@ export async function loadWorkspaceArtifacts(
   }
 
   return {
+    setupReadiness,
+    replicationOutcome,
     gapAnalysis,
     resultsComparison,
     fixLoopState,

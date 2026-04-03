@@ -18,6 +18,85 @@ test("workspace artifact loader reads pipeline result files", async () => {
     await mkdir(fixLoopPath, { recursive: true });
 
     await writeFile(
+      path.join(reportsPath, "setup-readiness.json"),
+      JSON.stringify({
+        generatedAt: "2026-04-01T09:00:00.000Z",
+        repository: {
+          name: "demo-repo",
+          path: "repo/demo-repo",
+          mainCodePaths: ["repo/demo-repo/src"],
+          notebookPaths: ["notebooks/demo.ipynb"]
+        },
+        environment: {
+          reportFound: true,
+          ready: true,
+          environmentName: "demo-env",
+          pythonVersion: "3.11.9",
+          environmentLocation: "/tmp/demo-env",
+          installationMethod: "uv",
+          packageCount: 12,
+          activationCommand: "source demo-env/bin/activate",
+          installCommands: ["uv venv --python 3.11 demo-env"],
+          validationChecksPassed: 4,
+          validationChecksTotal: 4
+        },
+        tutorials: {
+          scanFound: true,
+          includeListFound: true,
+          success: true,
+          successReason: "ok",
+          totalScanned: 2,
+          includedInTools: 1,
+          runnableCandidates: 1,
+          includedPaths: ["repo/demo-repo/notebooks/demo.ipynb"]
+        },
+        blockers: [],
+        requirements: ["source demo-env/bin/activate"],
+        nextSteps: ["Run tutorial notebooks"]
+      }),
+      "utf8"
+    );
+
+    await writeFile(
+      path.join(reportsPath, "replication-outcome.json"),
+      JSON.stringify({
+        generatedAt: "2026-04-01T09:30:00.000Z",
+        track: "hybrid",
+        lifecycle: "results_compared",
+        summary: "A results comparison exists, but validation has not passed yet.",
+        implementation: {
+          required: true,
+          experimentFiles: 2
+        },
+        experiments: {
+          summaryFound: true,
+          total: 2,
+          successful: 1,
+          partial: 1,
+          failed: 0,
+          crashed: 0
+        },
+        comparison: {
+          found: true,
+          overallMatch: "approximate",
+          matchScore: 0.67
+        },
+        fixLoop: {
+          found: true,
+          converged: false,
+          currentAttempt: 2,
+          maxAttempts: 3
+        },
+        validation: {
+          found: false
+        },
+        blockers: ["Validation has not run yet."],
+        nextSteps: ["Run workspace validation."]
+      }),
+      "utf8"
+    );
+
+    await writeFile(
       path.join(reportsPath, "gap_analysis.json"),
       JSON.stringify({
         coverage_score: 0.5,
@@ -106,6 +185,10 @@ test("workspace artifact loader reads pipeline result files", async () => {
 
     const artifacts = await loadWorkspaceArtifacts(workspacePath);
 
+    assert.equal(artifacts.setupReadiness?.environment.ready, true);
+    assert.equal(artifacts.replicationOutcome?.lifecycle, "results_compared");
+    assert.equal(artifacts.replicationOutcome?.comparison.matchScore, 0.67);
+    assert.equal(artifacts.setupReadiness?.tutorials.includedInTools, 1);
     assert.equal(artifacts.gapAnalysis?.track, "hybrid");
     assert.equal(artifacts.resultsComparison?.overall_match, "approximate");
     assert.equal(artifacts.fixLoopState?.current_attempt, 2);
