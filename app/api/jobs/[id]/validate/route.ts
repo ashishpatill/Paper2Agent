@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "path";
 
 import { getJob, updateJob } from "@/lib/server/jobs";
 import type { ValidationReport } from "@/lib/server/types";
+import { buildReplicationOutcomeReport } from "@/lib/server/replication-outcome";
+
+async function refreshReplicationOutcome(workspacePath: string) {
+  const replicationOutcome = await buildReplicationOutcomeReport(workspacePath);
+  const outcomePath = path.join(workspacePath, "reports", "replication-outcome.json");
+  await mkdir(path.dirname(outcomePath), { recursive: true });
+  await writeFile(outcomePath, JSON.stringify(replicationOutcome, null, 2), "utf8");
+}
 
 export async function POST(
   _request: Request,
@@ -40,6 +49,7 @@ export async function POST(
       ...current,
       validationReport: report,
     }));
+    await refreshReplicationOutcome(job.workspacePath);
 
     return NextResponse.json(report);
   } catch (err) {
@@ -54,6 +64,7 @@ export async function POST(
         ...current,
         validationReport: report,
       }));
+      await refreshReplicationOutcome(job.workspacePath);
       return NextResponse.json(report);
     } catch {
       return NextResponse.json(

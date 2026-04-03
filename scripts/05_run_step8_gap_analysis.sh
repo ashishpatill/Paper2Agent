@@ -14,6 +14,7 @@ STEP_OUT="$MAIN_DIR/claude_outputs/step8_output.json"
 PIPELINE_DIR="$MAIN_DIR/.pipeline"
 MARKER="$PIPELINE_DIR/05_step8_done"
 GAP_REPORT="$MAIN_DIR/reports/gap_analysis.json"
+SETUP_REPORT="$MAIN_DIR/reports/setup-readiness.json"
 STEP_SKIP_EXIT_CODE=10
 mkdir -p "$PIPELINE_DIR" "$MAIN_DIR/reports"
 
@@ -45,6 +46,7 @@ fi
 
 export paper_analysis_path="${PAPER_ANALYSIS:-}"
 export tools_dir="$TOOLS_DIR"
+export setup_readiness_path="$SETUP_REPORT"
 
 # Inject cross-run learning overlay
 export evolution_overlay

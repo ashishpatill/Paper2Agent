@@ -93,3 +93,7 @@ if ! find "$MAIN_DIR/src/experiments" -maxdepth 2 -name "*.py" -type f 2>/dev/nu
 fi
 
 touch "$MARKER"
+
+if [[ -n "$NPX_BIN" ]]; then
+  "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/build-replication-outcome.ts" "$MAIN_DIR" >/dev/null 2>&1 || true
+fi

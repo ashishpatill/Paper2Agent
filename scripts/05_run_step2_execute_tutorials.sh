@@ -16,6 +16,7 @@ PIPELINE_DIR="$MAIN_DIR/.pipeline"
 MARKER="$PIPELINE_DIR/05_step2_done"
 mkdir -p "$PIPELINE_DIR"
 STEP2_PROMPT="$SCRIPT_DIR/prompts/step2_prompt.md"
+SETUP_JSON="$MAIN_DIR/reports/setup-readiness.json"
 
 echo "05: step 2 executing tutorials -> $STEP_OUT" >&2
 
@@ -24,17 +25,35 @@ if [[ -f "$MARKER" ]]; then
   exit 0
 fi
 
+if [[ ! -s "$SETUP_JSON" ]]; then
+  echo "05: ERROR - step 2 requires reports/setup-readiness.json from step 1" >&2
+  exit 1
+fi
+
 if [[ ! -s "$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json" ]]; then
   echo "05: ERROR - step 2 requires reports/tutorial-scanner-include-in-tools.json from step 1" >&2
   exit 1
 fi
 
-if [[ "$(jq '.tutorials | length' "$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json" 2>/dev/null || echo 0)" -eq 0 ]]; then
-  echo "05: SKIP - target repository has no runnable tutorials to execute. Step 3 will extract tools directly from source code." >&2
+NPX_BIN="$(require_cli npx)"
+step2_readiness_msg=""
+set +e
+step2_readiness_msg="$("$NPX_BIN" tsx "$SCRIPT_DIR/scripts/check-step2-readiness.ts" "$SETUP_JSON" 2>&1)"
+step2_readiness_code=$?
+set -e
+
+if [[ $step2_readiness_code -eq 10 ]]; then
+  echo "05: SKIP - ${step2_readiness_msg}" >&2
   exit 10
+elif [[ $step2_readiness_code -ne 0 ]]; then
+  echo "05: ERROR - ${step2_readiness_msg}" >&2
+  exit 1
+else
+  echo "05: step 2 readiness - ${step2_readiness_msg}" >&2
 fi
 
 export api_key="$api_key"
+export setup_readiness_path="$SETUP_JSON"
 
 ENVSUBST_BIN="$(require_cli envsubst)"
 CLAUDE_BIN="$(require_cli claude)"

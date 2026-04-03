@@ -19,6 +19,7 @@ FIX_LOOP_DIR="$MAIN_DIR/reports/fix_loop"
 STEP_SKIP_EXIT_CODE=10
 MAX_FIX_ATTEMPTS=3
 mkdir -p "$PIPELINE_DIR" "$FIX_LOOP_DIR"
+NPX_BIN="$(resolve_cli npx 2>/dev/null || echo "")"
 
 STEP12_PROMPT="$SCRIPT_DIR/prompts/step12_prompt.md"
 
@@ -103,3 +104,7 @@ else
 fi
 
 touch "$MARKER"
+
+if [[ -n "$NPX_BIN" ]]; then
+  "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/build-replication-outcome.ts" "$MAIN_DIR" >/dev/null 2>&1 || true
+fi

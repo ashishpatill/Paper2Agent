@@ -35,6 +35,7 @@ Transform scientific research codebases into reusable tools by coordinating two 
 - `reports/environment-manager_results.md`: Environment setup summary
 - `reports/tutorial-scanner.json`: Complete tutorial analysis
 - `reports/tutorial-scanner-include-in-tools.json`: Filtered tutorials for tool creation
+- These outputs must be structured enough for a follow-up script to generate `reports/setup-readiness.json`
 
 ---
 
@@ -75,12 +76,24 @@ Task 2: tutorial-scanner
 - Verify environment-manager_results.md exists and contains required sections
 - Confirm environment activation commands are properly documented
 - Validate Python version compliance (≥3.10)
+- Record enough detail for downstream parsing:
+  - environment name
+  - python version
+  - install commands
+  - activation command
+  - validation checklist results
+  - main code paths discovered
 
 **Tutorial Validation:**
 - Validate JSON schema compliance for both output files
 - Cross-reference tutorial paths with actual repository structure
 - Verify filter results match expected criteria
 - Ensure no legacy/deprecated content marked as "include-in-tools"
+- Ensure tutorial JSON includes:
+  - scan success flag and reason
+  - tutorial type per item
+  - include_in_tools decision per item
+  - exact repository-relative paths
 
 **Quality Checks:**
 - Environment: Successful dependency installation, pytest configuration

@@ -19,6 +19,7 @@ Compute a coverage score by comparing the paper's described capabilities against
 - Paper analysis (if available at `${paper_analysis_path}`): contains `capabilities[]`, `reported_results[]`, and `datasets_required[]`
 - `reports/tutorial-scanner.json` — tutorial scan results
 - `reports/executed_notebooks.json` — executed notebook results (may not exist)
+- `reports/setup-readiness.json` (if available at `${setup_readiness_path}`) — setup readiness, blockers, selected tutorials, and next steps from step 1
 
 ## Process
 
@@ -33,6 +34,13 @@ Read the paper's capabilities list. For each capability:
 - Check if any extracted tool covers it (partial or full)
 - Check if the repo source code (`repo/${github_repo_name}/`) implements it even if no tool was extracted
 - Mark as "covered", "partially_covered", or "uncovered"
+
+### 2b. Factor Setup Reality Into Recommendations
+If `reports/setup-readiness.json` exists:
+- Read its blockers, requirements, and next steps
+- Do not change the coverage score purely because setup is incomplete
+- But do use those blockers to make `recommended_approach` honest about whether tutorial execution or implementation work is currently blocked by environment/setup problems
+- If no tutorials were selected, say so explicitly and bias the recommendation toward direct source extraction or implementation-track work
 
 ### 3. Compute Coverage Score
 ```
@@ -77,4 +85,5 @@ Write the following JSON to `reports/gap_analysis.json`:
 - If no tools were extracted at all, coverage_score = 0.
 - If no paper analysis is available, infer capabilities from the repository README and paper title.
 - Do NOT generate implementation code in this step — only analyze and report.
+- Keep `recommended_approach` grounded in both capability coverage and setup reality.
 ${evolution_overlay}

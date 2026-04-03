@@ -32,6 +32,7 @@ export tutorial_filter="$tutorial_filter"
 
 ENVSUBST_BIN="$(require_cli envsubst)"
 CLAUDE_BIN="$(require_cli claude)"
+NPX_BIN="$(require_cli npx)"
 
 "$ENVSUBST_BIN" < "$STEP1_PROMPT" | "$CLAUDE_BIN" \
   --model claude-sonnet-4-20250514 \
@@ -47,6 +48,7 @@ fi
 
 SCAN_JSON="$MAIN_DIR/reports/tutorial-scanner.json"
 INCLUDE_JSON="$MAIN_DIR/reports/tutorial-scanner-include-in-tools.json"
+SETUP_JSON="$MAIN_DIR/reports/setup-readiness.json"
 
 if [[ ! -s "$SCAN_JSON" || ! -s "$INCLUDE_JSON" ]]; then
   echo "05: ERROR - step 1 did not produce tutorial scanner reports for repo/${repo_name}" >&2
@@ -55,6 +57,16 @@ fi
 
 if search_text 'AlphaPOP|score_batch|alphagenome|templates/' "$SCAN_JSON" "$INCLUDE_JSON"; then
   echo "05: ERROR - step 1 output referenced template/example assets instead of the target repository" >&2
+  exit 1
+fi
+
+if ! "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/build-step1-readiness-report.ts" "$MAIN_DIR" "$repo_name" "$tutorial_filter" >/dev/null; then
+  echo "05: ERROR - step 1 did not produce a valid reports/setup-readiness.json report" >&2
+  exit 1
+fi
+
+if [[ ! -s "$SETUP_JSON" ]]; then
+  echo "05: ERROR - step 1 did not produce reports/setup-readiness.json" >&2
   exit 1
 fi
 

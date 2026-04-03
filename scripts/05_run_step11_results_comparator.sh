@@ -18,6 +18,7 @@ RESULTS_DIR="$MAIN_DIR/reports/experiment_results"
 COMPARISON_REPORT="$MAIN_DIR/reports/results_comparison.json"
 STEP_SKIP_EXIT_CODE=10
 mkdir -p "$PIPELINE_DIR"
+NPX_BIN="$(resolve_cli npx 2>/dev/null || echo "")"
 
 STEP11_PROMPT="$SCRIPT_DIR/prompts/step11_prompt.md"
 
@@ -70,3 +71,7 @@ else
 fi
 
 touch "$MARKER"
+
+if [[ -n "$NPX_BIN" ]]; then
+  "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/build-replication-outcome.ts" "$MAIN_DIR" >/dev/null 2>&1 || true
+fi

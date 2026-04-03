@@ -18,6 +18,7 @@ GAP_REPORT="$MAIN_DIR/reports/gap_analysis.json"
 RESULTS_DIR="$MAIN_DIR/reports/experiment_results"
 STEP_SKIP_EXIT_CODE=10
 mkdir -p "$PIPELINE_DIR" "$RESULTS_DIR"
+NPX_BIN="$(resolve_cli npx 2>/dev/null || echo "")"
 
 STEP10_PROMPT="$SCRIPT_DIR/prompts/step10_prompt.md"
 
@@ -96,3 +97,7 @@ if ! find "$RESULTS_DIR" -maxdepth 2 -name "*.json" -type f 2>/dev/null | grep -
 fi
 
 touch "$MARKER"
+
+if [[ -n "$NPX_BIN" ]]; then
+  "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/build-replication-outcome.ts" "$MAIN_DIR" >/dev/null 2>&1 || true
+fi

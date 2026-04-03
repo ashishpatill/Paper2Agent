@@ -24,6 +24,7 @@ Transform tutorial materials into executable, validated notebooks with gold-stan
 - **tutorial-executor**: Comprehensive tutorial execution specialist that handles notebook preparation, environment management, iterative error resolution, and output generation for all tutorials
 
 ## Input Requirements
+- `reports/setup-readiness.json`: Source-of-truth setup report from step 1
 - `reports/tutorial-scanner-include-in-tools.json`: List of tutorials requiring execution
 - `${github_repo_name}-env`: Pre-configured Python environment for execution
 - Repository structure under `repo/${github_repo_name}/`
@@ -41,15 +42,18 @@ Transform tutorial materials into executable, validated notebooks with gold-stan
 ### Phase 1: Pre-Execution Validation
 
 **Input Validation:**
+- Read `reports/setup-readiness.json` first and treat it as the source of truth for setup readiness, activation commands, selected tutorials, blockers, and next steps
 - Verify `reports/tutorial-scanner-include-in-tools.json` exists and contains valid tutorials
 - Confirm `${github_repo_name}-env` environment is available and functional
 - Validate repository structure and tutorial file accessibility
 - Check for required tools (papermill, jupytext, image extraction scripts)
 
 **Environment Preparation:**
-- Test environment activation: `source ${github_repo_name}-env/bin/activate`
+- Prefer the activation command recorded in `reports/setup-readiness.json`
+- Test environment activation before any notebook execution
 - Verify essential dependencies are installed (papermill, nbclient, ipykernel, imagehash)
 - Ensure repository paths are accessible from current working directory
+- If `reports/setup-readiness.json` says the environment is not ready, fail clearly for this repository instead of inventing a different setup path
 
 **API Key Integration:**
 - When API key is provided ("${api_key}"), instruct tutorial-executor to:
@@ -136,6 +140,7 @@ git -C repo/${github_repo_name} branch --show-current
 Use [✓] to confirm success and [✗] to confirm failure. Provide a one-line reason for success or failure. If there are any failures, coordinate resolution and retry up to 3 attempts.
 
 - [ ] **Input Validation**: Tutorial list and environment successfully validated
+- [ ] **Setup Contract**: `reports/setup-readiness.json` was honored and any blockers were surfaced clearly
 - [ ] **Execution Launch**: Tutorial-executor agent launched and completed successfully
 - [ ] **Output Generation**: All expected notebooks and images generated
 - [ ] **Quality Assurance**: Execution integrity verified and documented
