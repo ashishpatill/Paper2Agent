@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -15,6 +16,7 @@ const TERMINAL_JOB_STATUSES = new Set<JobStatus>([
   "completed",
   "failed"
 ]);
+const jobWriteChains = new Map<string, Promise<void>>();
 
 function jobDirectory(jobId: string) {
   return path.join(jobsRoot, jobId);
@@ -86,25 +88,38 @@ function isStaleInFlightJob(job: JobRecord) {
 }
 
 export async function updateJob(jobId: string, updater: (job: JobRecord) => JobRecord) {
-  const current = await getJob(jobId);
+  const previousWrite = jobWriteChains.get(jobId) ?? Promise.resolve();
+  const updateRun = previousWrite.catch(() => undefined).then(async () => {
+    const current = await getJob(jobId);
 
-  if (!current) {
-    throw new Error(`Job ${jobId} was not found.`);
-  }
+    if (!current) {
+      throw new Error(`Job ${jobId} was not found.`);
+    }
 
-  const next = updater({
-    ...current,
-    updatedAt: new Date().toISOString()
+    const next = updater({
+      ...current,
+      updatedAt: new Date().toISOString()
+    });
+
+    const target = jobFile(jobId);
+    const tmp = `${target}.${process.pid}.${randomUUID()}.tmp`;
+    const serialized = JSON.stringify(next, null, 2);
+    // Validate the serialized JSON before writing to prevent corruption
+    JSON.parse(serialized);
+    await writeFile(tmp, serialized, "utf8");
+    await rename(tmp, target);
+    return next;
   });
+  const releaseChain = updateRun.then(() => undefined, () => undefined);
+  jobWriteChains.set(jobId, releaseChain);
 
-  const target = jobFile(jobId);
-  const tmp = `${target}.tmp`;
-  const serialized = JSON.stringify(next, null, 2);
-  // Validate the serialized JSON before writing to prevent corruption
-  JSON.parse(serialized);
-  await writeFile(tmp, serialized, "utf8");
-  await rename(tmp, target);
-  return next;
+  try {
+    return await updateRun;
+  } finally {
+    if (jobWriteChains.get(jobId) === releaseChain) {
+      jobWriteChains.delete(jobId);
+    }
+  }
 }
 
 export async function reconcileJob(jobId: string) {
