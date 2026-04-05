@@ -398,11 +398,13 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
       if [[ $step_attempt -le $MAX_STEP_RETRIES ]]; then
         echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🔧 Step $i failed (exit $step_exit_code), diagnosing..." >&2 || true
 
-        # Read last lines of step output for diagnosis
+        # Read the FULL step output file for diagnosis (not just tail, to catch rate-limit events)
         STEP_OUTPUT="$MAIN_DIR/claude_outputs/step${i}_output.json"
         STEP_LOG=""
         if [[ -f "$STEP_OUTPUT" ]]; then
-          STEP_LOG=$(tail -30 "$STEP_OUTPUT" 2>/dev/null || true)
+          STEP_LOG=$(cat "$STEP_OUTPUT" 2>/dev/null || true)
+          # Also capture last few lines for readability
+          STEP_LOG_TAIL=$(tail -5 "$STEP_OUTPUT" 2>/dev/null || true)
         fi
 
         # Auto-fix common failures
@@ -430,9 +432,10 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
         fi
 
         # Check for Claude usage exhaustion — not retryable, must wait for reset
-        if echo "$STEP_LOG" | grep -qi "out of extra usage\|usage limit reached\|rate.*limit\|quota.*exceeded"; then
-          reset_hint=$(echo "$STEP_LOG" | grep -oi "resets [^\"]*" | head -1 || true)
-          echo "  → Claude usage limit reached ($reset_hint) — cannot retry, stopping pipeline" >&2 || true
+        # Read the FULL file (not tail) so we don't miss rate_limit_event JSON lines
+        if [[ -f "$STEP_OUTPUT" ]] && grep -qi "out of extra usage\|out_of_credits\|usage limit reached\|\"rate_limit\"\|quota.*exceeded" "$STEP_OUTPUT" 2>/dev/null; then
+          reset_hint=$(grep -oi "resets [^\"<]*" "$STEP_OUTPUT" 2>/dev/null | head -1 || true)
+          echo "  → Claude usage limit reached — cannot retry${reset_hint:+ ($reset_hint)}, stopping pipeline" >&2 || true
           break
         fi
 
@@ -447,6 +450,14 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
           echo "  → Permission error — attempting chmod fix" >&2 || true
           chmod -R u+rw "$MAIN_DIR" 2>/dev/null || true
           fix_applied=true
+        fi
+
+        # Exponential backoff before retry (5s, then 15s) — prevents hammering
+        # rate-limited providers and gives transient errors time to resolve
+        if [[ "$fix_applied" == "false" && $step_attempt -lt $MAX_STEP_RETRIES ]]; then
+          backoff=$(( 5 * (3 ** (step_attempt - 1)) ))
+          echo "  → Waiting ${backoff}s before retry (exponential backoff)" >&2 || true
+          sleep "$backoff"
         fi
 
         # Remove marker so step reruns
