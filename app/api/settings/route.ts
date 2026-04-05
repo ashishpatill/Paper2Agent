@@ -8,7 +8,7 @@ const payloadSchema = z.object({
   openrouterApiKey: z.string().optional().transform((value) => value?.trim()),
   geminiModel: z.string().min(1).optional().transform((value) => value?.trim()),
   openrouterModel: z.string().min(1).optional().transform((value) => value?.trim()),
-  preferredProvider: z.enum(["gemini", "openrouter"]).optional()
+  preferredProvider: z.enum(["gemini", "openrouter", "claude"]).optional()
 });
 
 export async function GET() {

@@ -30,16 +30,13 @@ fi
 export github_repo_name="$repo_name"
 export tutorial_filter="$tutorial_filter"
 
+# Generate a temp prompt file for run_pipeline_agent (it expects a file path)
+TEMP_PROM="$MAIN_DIR/.pipeline/step1_prompt.envsubst"
 ENVSUBST_BIN="$(require_cli envsubst)"
-CLAUDE_BIN="$(require_cli claude)"
-NPX_BIN="$(require_cli npx)"
+"$ENVSUBST_BIN" < "$STEP1_PROMPT" > "$TEMP_PROM"
 
-"$ENVSUBST_BIN" < "$STEP1_PROMPT" | "$CLAUDE_BIN" \
-  --model claude-sonnet-4-20250514 \
-  --verbose \
-  --output-format stream-json \
-  --dangerously-skip-permissions \
-  -p - > "$STEP_OUT"
+# Use provider-agnostic pipeline agent (respects PAPER2AGENT_CLI env var)
+run_pipeline_agent "$TEMP_PROM" "$STEP_OUT"
 
 if search_text 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
   echo "05: ERROR - step 1 asked for clarification instead of executing the tutorial scan" >&2

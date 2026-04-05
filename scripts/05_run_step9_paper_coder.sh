@@ -74,12 +74,11 @@ fi
 export evolution_overlay
 evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 9 "$github_repo_name")"
 
+# Generate envsubstituted prompt and run with provider-agnostic agent
+TEMP_PROM="$MAIN_DIR/.pipeline/step9_prompt.envsubst"
 ENVSUBST_BIN="$(require_cli envsubst)"
-CLAUDE_BIN="$(require_cli claude)"
-
-"$ENVSUBST_BIN" < "$STEP9_PROMPT" | "$CLAUDE_BIN" --model claude-sonnet-4-20250514 \
-  --verbose --output-format stream-json \
-  --dangerously-skip-permissions -p - > "$STEP_OUT"
+"$ENVSUBST_BIN" < "$STEP9_PROMPT" > "$TEMP_PROM"
+run_pipeline_agent "$TEMP_PROM" "$STEP_OUT"
 
 if search_text 'Would you like me to|Could you clarify' "$STEP_OUT"; then
   echo "05: ERROR - step 9 asked for clarification instead of generating code" >&2

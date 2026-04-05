@@ -136,12 +136,10 @@ echo "05: Coverage and pylint analysis complete, generating reports..." >&2
 # Export repo_name for envsubst substitution
 export github_repo_name="$repo_name"
 
-# Replace ${github_repo_name} placeholder in prompt
+# Generate envsubstituted prompt and run with provider-agnostic agent
+TEMP_PROM="$MAIN_DIR/.pipeline/step5_prompt.envsubst"
 ENVSUBST_BIN="$(require_cli envsubst)"
-CLAUDE_BIN="$(require_cli claude)"
-
-"$ENVSUBST_BIN" < "$STEP5_PROMPT" | "$CLAUDE_BIN" --model claude-sonnet-4-20250514 \
-  --verbose --output-format stream-json \
-  --dangerously-skip-permissions -p - > "$STEP_OUT"
+"$ENVSUBST_BIN" < "$STEP5_PROMPT" > "$TEMP_PROM"
+run_pipeline_agent "$TEMP_PROM" "$STEP_OUT"
 
 touch "$MARKER"

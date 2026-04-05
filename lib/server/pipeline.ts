@@ -239,6 +239,8 @@ export async function runPipeline(options: {
   paperUrl?: string;
   paperTitle?: string;
   notes?: string;
+  /** Environment variables to pass to the shell pipeline (e.g. AI provider config) */
+  env?: Record<string, string>;
   onProgress?: (event: PipelineProgressEvent) => Promise<void> | void;
 }) {
   const { projectDir, workspacePath, logPath } = getPipelinePaths({
@@ -315,7 +317,11 @@ export async function runPipeline(options: {
       ],
       {
         cwd: process.cwd(),
-        stdio: ["ignore", "pipe", "pipe"]
+        stdio: ["ignore", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          ...options.env
+        }
       }
     );
 

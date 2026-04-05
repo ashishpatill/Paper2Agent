@@ -332,6 +332,21 @@ async function main() {
       { markProgress: true }
     );
 
+    // Build provider env vars for the shell pipeline
+    // run_pipeline_agent reads: PAPER2AGENT_CLI, PAPER2AGENT_MODEL, PAPER2AGENT_API_KEY, PAPER2AGENT_BASE_URL
+    const pipelineEnv: Record<string, string> = {};
+
+    if (chosen.provider === "openrouter") {
+      pipelineEnv.PAPER2AGENT_CLI = "openrouter";
+      pipelineEnv.PAPER2AGENT_MODEL = chosen.model;
+      pipelineEnv.PAPER2AGENT_API_KEY = secrets.openrouterApiKey || "";
+      pipelineEnv.PAPER2AGENT_BASE_URL = "https://openrouter.ai/api/v1";
+    } else if (chosen.provider === "gemini") {
+      pipelineEnv.PAPER2AGENT_CLI = "gemini";
+      pipelineEnv.PAPER2AGENT_MODEL = chosen.model;
+      pipelineEnv.PAPER2AGENT_API_KEY = secrets.geminiApiKey || "";
+    }
+
     let pipeline;
     try {
       pipeline = await runPipeline({
@@ -341,6 +356,7 @@ async function main() {
         paperUrl: job.paperUrl,
         paperTitle: enrichedAnalysis.title,
         notes: job.notes,
+        env: pipelineEnv,
         onProgress: async (event) => {
           await handlePipelineProgress(jobId, pipelinePaths, event);
         }

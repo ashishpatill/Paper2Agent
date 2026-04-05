@@ -80,14 +80,16 @@ export max_fix_attempts="$MAX_FIX_ATTEMPTS"
 export evolution_overlay
 evolution_overlay="$(generate_overlay "$SCRIPT_DIR" "$MAIN_DIR" 12 "$REPO_NAME")"
 
-# The fix loop runs as a single Claude session that iterates internally.
+# The fix loop runs as a single AI session that iterates internally.
 # It reads the comparison report, identifies failing experiments,
 # modifies code, re-runs, and re-compares — up to MAX_FIX_ATTEMPTS times.
 STEP_OUT="$MAIN_DIR/claude_outputs/step12_output.json"
 
-"$ENVSUBST_BIN" < "$STEP12_PROMPT" | "$CLAUDE_BIN" --model claude-sonnet-4-20250514 \
-  --verbose --output-format stream-json \
-  --dangerously-skip-permissions -p - > "$STEP_OUT"
+# Generate envsubstituted prompt and run with provider-agnostic agent
+TEMP_PROM="$MAIN_DIR/.pipeline/step12_prompt.envsubst"
+ENVSUBST_BIN="$(require_cli envsubst)"
+"$ENVSUBST_BIN" < "$STEP12_PROMPT" > "$TEMP_PROM"
+run_pipeline_agent "$TEMP_PROM" "$STEP_OUT"
 
 if search_text 'Would you like me to|Could you clarify' "$STEP_OUT"; then
   echo "05: ERROR - step 12 asked for clarification instead of fixing experiments" >&2

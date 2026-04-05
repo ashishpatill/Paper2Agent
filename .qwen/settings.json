@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sed *)"
+      "Bash(chmod *)",
+      "Bash(echo *)"
     ]
-  }
+  },
+  "$version": 3
 }

@@ -50,6 +50,8 @@ function readOpenRouterMessageContent(
 }
 
 export function chooseProvider(secrets: StoredSecrets) {
+  // If Claude is preferred for pipeline, still need an API for paper analysis
+  // Fall through to available API keys
   if (secrets.preferredProvider === "gemini" && secrets.geminiApiKey) {
     return {
       provider: "gemini" as const,

@@ -55,12 +55,11 @@ fi
 export api_key="$api_key"
 export setup_readiness_path="$SETUP_JSON"
 
+# Generate envsubstituted prompt and run with provider-agnostic agent
+TEMP_PROM="$MAIN_DIR/.pipeline/step2_prompt.envsubst"
 ENVSUBST_BIN="$(require_cli envsubst)"
-CLAUDE_BIN="$(require_cli claude)"
-
-"$ENVSUBST_BIN" < "$STEP2_PROMPT" | "$CLAUDE_BIN" --model claude-sonnet-4-20250514 \
-  --verbose --output-format stream-json \
-  --dangerously-skip-permissions -p - > "$STEP_OUT"
+"$ENVSUBST_BIN" < "$STEP2_PROMPT" > "$TEMP_PROM"
+run_pipeline_agent "$TEMP_PROM" "$STEP_OUT"
 
 if search_text 'Would you like me to|Could you clarify|What would you like me to do' "$STEP_OUT"; then
   echo "05: ERROR - step 2 asked for clarification instead of executing tutorials" >&2
