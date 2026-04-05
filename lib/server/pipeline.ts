@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { logsRoot, workspacesRoot } from "./fs";
 import type { PipelineProgress, StepStatus } from "./types";
 import { PIPELINE_STEP_DEFINITIONS } from "../pipeline-steps";
+import { startStepSpan, endStepSpan, recordFailoverEvent } from "./langfuse";
 
 export interface PipelineProgressEvent {
   line: string;
@@ -241,12 +242,39 @@ export async function runPipeline(options: {
   notes?: string;
   /** Environment variables to pass to the shell pipeline (e.g. AI provider config) */
   env?: Record<string, string>;
+  /** Langfuse trace for step-level spans */
+  trace?: any;
   onProgress?: (event: PipelineProgressEvent) => Promise<void> | void;
 }) {
   const { projectDir, workspacePath, logPath } = getPipelinePaths({
     jobId: options.jobId,
     projectSlug: options.projectSlug
   });
+
+  // Track active step spans for Langfuse
+  const activeSpans = new Map<number, any>();
+
+  function maybeTrackStep(event: PipelineProgressEvent) {
+    if (!options.trace || !event.stepNumber || !event.phase) return;
+
+    if (event.phase === "start") {
+      const span = startStepSpan(options.trace, {
+        stepNumber: event.stepNumber,
+        stepName: event.stepLabel || `Step ${event.stepNumber}`,
+      });
+      activeSpans.set(event.stepNumber, span);
+    } else if (event.phase === "complete" || event.phase === "skip" || event.phase === "error") {
+      const span = activeSpans.get(event.stepNumber);
+      if (span) {
+        endStepSpan(span, {
+          status: event.phase === "complete" ? "success" : event.phase === "skip" ? "skipped" : "error",
+          output: event.line ? { lastLine: event.line.slice(0, 200) } : undefined,
+          error: event.phase === "error" ? event.stepLabel : undefined,
+        });
+        activeSpans.delete(event.stepNumber);
+      }
+    }
+  }
 
   await mkdir(workspacesRoot, { recursive: true });
   await mkdir(logsRoot, { recursive: true });
@@ -285,6 +313,8 @@ export async function runPipeline(options: {
             : phaseToken.startsWith("skip")
               ? "skip"
               : "error";
+
+        maybeTrackStep(event);
       }
 
       // Capture heartbeat lines as activity updates (↳ prefix)

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, LoaderCircle, Sparkles, AlertTriangle, Globe, Bot, Key } from "lucide-react";
+import { CheckCircle2, LoaderCircle, Sparkles, AlertTriangle, Globe, Bot, Key, BarChart3 } from "lucide-react";
 
 import type { SecretsSummary } from "@/lib/server/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,15 +59,21 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
 
     const geminiKey = String(formData.get("geminiApiKey") ?? "").trim();
     const orKey = String(formData.get("openrouterApiKey") ?? "").trim();
+    const lfSecret = String(formData.get("langfuseSecretKey") ?? "").trim();
+    const lfPublic = String(formData.get("langfusePublicKey") ?? "").trim();
+    const lfBase = String(formData.get("langfuseBaseUrl") ?? "").trim();
     const provider = String(formData.get("pipelineProvider") ?? "claude");
 
-    const payload: Record<string, string | undefined> = {
+    const payload: Record<string, string | boolean | undefined> = {
       geminiModel: String(formData.get("geminiModel") ?? ""),
       openrouterModel: String(formData.get("openrouterModel") ?? ""),
-      preferredProvider: provider
+      preferredProvider: provider,
     };
     if (geminiKey) payload.geminiApiKey = geminiKey;
     if (orKey) payload.openrouterApiKey = orKey;
+    if (lfSecret) payload.langfuseSecretKey = lfSecret;
+    if (lfPublic) payload.langfusePublicKey = lfPublic;
+    if (lfBase) payload.langfuseBaseUrl = lfBase;
 
     const response = await fetch("/api/settings", {
       method: "POST",
@@ -81,7 +88,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
 
     const next = (await response.json()) as SecretsSummary;
     setSettings(next);
-    setPipelineProvider(provider);
+    setPipelineProvider(provider as "gemini" | "openrouter" | "claude");
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
@@ -114,7 +121,7 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
               <Label>Which AI service should the pipeline use?</Label>
               <Select
                 value={pipelineProvider}
-                onValueChange={(v) => setPipelineProvider(v)}
+                onValueChange={(v) => setPipelineProvider(v as "gemini" | "openrouter" | "claude")}
                 name="pipelineProvider"
               >
                 <SelectTrigger className="h-12">
@@ -267,6 +274,90 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
         </CardContent>
       </Card>
 
+      {/* Langfuse Tracing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <BarChart3 className="h-4 w-4" />
+            Langfuse Tracing
+          </CardTitle>
+          <CardDescription>
+            Trace every LLM call, pipeline step, and self-healing attempt to your Langfuse dashboard.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            className="space-y-5"
+            action={(formData) =>
+              startSaving(() => {
+                void handleSave(formData);
+              })
+            }
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Enable tracing</p>
+                <p className="text-xs text-muted-foreground">Send execution data to Langfuse for monitoring and debugging</p>
+              </div>
+              <input type="hidden" name="langfuseEnabled" value="off" />
+              <Switch
+                name="langfuseEnabled"
+                checked={settings.langfuseEnabled}
+                onCheckedChange={(checked) => setSettings({ ...settings, langfuseEnabled: checked })}
+              />
+            </div>
+
+            {settings.langfuseEnabled && (
+              <div className="space-y-4 rounded-lg border border-border/50 bg-card p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="langfuseSecretKey">Secret Key</Label>
+                  <Input
+                    id="langfuseSecretKey"
+                    name="langfuseSecretKey"
+                    type="password"
+                    placeholder={settings.hasLangfuseKey ? "Saved locally — leave blank to keep" : "sk-lf-..."}
+                  />
+                  {settings.hasLangfuseKey && (
+                    <p className="flex items-center gap-1 text-xs text-success">
+                      <CheckCircle2 className="h-3 w-3" /> Key is saved
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="langfusePublicKey">Public Key</Label>
+                  <Input
+                    id="langfusePublicKey"
+                    name="langfusePublicKey"
+                    type="password"
+                    placeholder={settings.hasLangfuseKey ? "Saved locally — leave blank to keep" : "pk-lf-..."}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="langfuseBaseUrl">Base URL</Label>
+                  <Input
+                    id="langfuseBaseUrl"
+                    name="langfuseBaseUrl"
+                    defaultValue={settings.langfuseBaseUrl || "https://cloud.langfuse.com"}
+                    placeholder="https://cloud.langfuse.com"
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button disabled={isSaving} type="submit" className="w-full">
+              {isSaving ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : saved ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {saved ? "Saved" : "Save Settings"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
       {/* Runtime Readiness */}
       <Card>
         <CardHeader>
@@ -304,6 +395,17 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
             detail={settings.hasOpenRouterKey ? settings.openrouterModel : "Not configured"}
           />
           <ReadinessRow label="Storage" ok detail=".paper2agent/local/secrets.json" />
+          <ReadinessRow
+            label="Langfuse Tracing"
+            ok={settings.langfuseEnabled && settings.hasLangfuseKey}
+            detail={
+              settings.langfuseEnabled
+                ? settings.hasLangfuseKey
+                  ? "Tracing enabled"
+                  : "Keys required"
+                : "Disabled"
+            }
+          />
         </CardContent>
       </Card>
     </div>

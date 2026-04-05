@@ -4,6 +4,7 @@ import path from "node:path";
 import { ensureAppDirectories, localRoot, readJsonFile, writeJsonFile } from "./fs";
 import { normalizeGeminiModel } from "./llm";
 import type { SecretsSummary, StoredSecrets } from "./types";
+import { configure as configureLangfuse } from "./langfuse";
 
 const secretsFile = path.join(localRoot, "secrets.json");
 
@@ -15,14 +16,29 @@ export async function loadSecrets(): Promise<StoredSecrets> {
   await ensureAppDirectories();
   const stored = await readJsonFile<StoredSecrets>(secretsFile, {});
 
-  return {
+  const secrets = {
     ...stored,
     geminiApiKey: process.env.GEMINI_API_KEY || stored.geminiApiKey,
     openrouterApiKey: process.env.OPENROUTER_API_KEY || stored.openrouterApiKey,
     geminiModel: normalizeGeminiModel(stored.geminiModel || DEFAULT_GEMINI_MODEL),
     openrouterModel: stored.openrouterModel || DEFAULT_OPENROUTER_MODEL,
-    preferredProvider: stored.preferredProvider || "gemini"
+    preferredProvider: stored.preferredProvider || "gemini",
+    langfuseSecretKey: process.env.LANGFUSE_SECRET_KEY || stored.langfuseSecretKey,
+    langfusePublicKey: process.env.LANGFUSE_PUBLIC_KEY || stored.langfusePublicKey,
+    langfuseBaseUrl: stored.langfuseBaseUrl || process.env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com",
+    langfuseEnabled: stored.langfuseEnabled ?? process.env.LANGFUSE_ENABLED === "true"
   };
+
+  // Configure Langfuse if enabled
+  if (secrets.langfuseEnabled && secrets.langfuseSecretKey && secrets.langfusePublicKey) {
+    configureLangfuse({
+      secretKey: secrets.langfuseSecretKey,
+      publicKey: secrets.langfusePublicKey,
+      baseUrl: secrets.langfuseBaseUrl
+    });
+  }
+
+  return secrets;
 }
 
 export async function saveSecrets(nextSecrets: Partial<StoredSecrets>) {
@@ -56,6 +72,9 @@ export async function getSecretsSummary(): Promise<SecretsSummary> {
     hasOpenRouterKey: Boolean(secrets.openrouterApiKey),
     geminiModel: secrets.geminiModel || DEFAULT_GEMINI_MODEL,
     openrouterModel: secrets.openrouterModel || DEFAULT_OPENROUTER_MODEL,
-    preferredProvider: secrets.preferredProvider || "gemini"
+    preferredProvider: secrets.preferredProvider || "gemini",
+    hasLangfuseKey: Boolean(secrets.langfuseSecretKey && secrets.langfusePublicKey),
+    langfuseEnabled: secrets.langfuseEnabled ?? false,
+    langfuseBaseUrl: secrets.langfuseBaseUrl
   };
 }

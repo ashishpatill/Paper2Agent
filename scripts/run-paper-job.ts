@@ -16,6 +16,7 @@ import {
 import { assessRepositoryImplementability } from "../lib/server/repository-feasibility";
 import { loadSecrets } from "../lib/server/secrets";
 import { buildSkillGraph } from "../lib/skills/graph";
+import { startPipelineTrace, shutdown, recordFailoverEvent, startStepSpan, endStepSpan, recordHealingEvent } from "../lib/server/langfuse";
 import type { JobRecord } from "../lib/server/types";
 
 const HEARTBEAT_INTERVAL_MS = 15_000;
@@ -155,6 +156,12 @@ async function main() {
   await ensureAppDirectories();
   const heartbeat = startHeartbeat(jobId);
 
+  // Start Langfuse trace for this pipeline run
+  const { trace } = startPipelineTrace({
+    traceId: `pipeline-${jobId}`,
+    jobId,
+  });
+
   try {
     const job = await ensureJobCanContinue(jobId);
     const secrets = await loadSecrets();
@@ -205,13 +212,14 @@ async function main() {
 
     await ensureJobCanContinue(jobId);
 
-    const { analysis, provider: actualProvider, failoverUsed } = await analyzePaperWithFailover({
+    const { analysis, provider: actualProvider, model: actualModel, failoverUsed } = await analyzePaperWithFailover({
       secrets,
       sourceText: source.rawText,
       titleHint: source.titleHint,
       repositoryUrlHint: job.repositoryUrl || source.repositoryUrlHint,
       sourceUrl: job.paperUrl,
-      notes: job.notes
+      notes: job.notes,
+      traceId: `pipeline-${jobId}`
     });
 
     if (failoverUsed) {
@@ -357,6 +365,7 @@ async function main() {
         paperTitle: enrichedAnalysis.title,
         notes: job.notes,
         env: pipelineEnv,
+        trace,
         onProgress: async (event) => {
           await handlePipelineProgress(jobId, pipelinePaths, event);
         }
@@ -388,6 +397,9 @@ async function main() {
       }));
       await scheduleQueuedJobs().catch(() => undefined);
       return;
+    } finally {
+      // Shutdown Langfuse to flush all events
+      await shutdown();
     }
 
     const latest = await getJob(jobId);

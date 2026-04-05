@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import OpenAI from "openai";
 
 import type { PaperAnalysis, Provider, StoredSecrets } from "./types";
+import { traceGeneration } from "./langfuse";
 
 const SYSTEM_PROMPT = `You are Paper2Agent's intake analyst.
 Return JSON only.
@@ -124,6 +125,8 @@ export async function analyzePaperWithFailover(options: {
   repositoryUrlHint?: string;
   sourceUrl?: string;
   notes?: string;
+  /** Langfuse trace ID for correlating this call with the pipeline run */
+  traceId?: string;
 }): Promise<{ analysis: PaperAnalysis; provider: Provider; model: string; failoverUsed: boolean }> {
   const providers = getProviderOrder(options.secrets);
 
@@ -144,7 +147,8 @@ export async function analyzePaperWithFailover(options: {
         titleHint: options.titleHint,
         repositoryUrlHint: options.repositoryUrlHint,
         sourceUrl: options.sourceUrl,
-        notes: options.notes
+        notes: options.notes,
+        traceId: options.traceId
       });
 
       return {
@@ -176,6 +180,8 @@ export async function analyzePaper(options: {
   repositoryUrlHint?: string;
   sourceUrl?: string;
   notes?: string;
+  /** Langfuse trace ID for correlating this call with the pipeline run */
+  traceId?: string;
 }): Promise<PaperAnalysis> {
   const prompt = [
     "Analyze this research paper input and map it to a Paper2Agent workflow.",
@@ -221,6 +227,18 @@ export async function analyzePaper(options: {
   }
 
   const parsed = JSON.parse(extractJson(rawText)) as PaperAnalysis;
+
+  // Trace to Langfuse
+  if (options.traceId) {
+    traceGeneration({
+      traceId: options.traceId,
+      traceName: "paper-analysis",
+      model: options.model,
+      provider: options.provider,
+      input: options.sourceText.slice(0, 2000),
+      output: parsed.summary?.slice(0, 500) || null,
+    });
+  }
 
   return {
     ...parsed,

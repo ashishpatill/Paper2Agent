@@ -1,4 +1,4 @@
-export type Provider = "gemini" | "openrouter";
+export type Provider = "gemini" | "openrouter" | "claude";
 export type SkillStage = "discover" | "build" | "implement" | "package" | "verify" | "operate";
 export type SkillLevel = "core" | "recommended" | "optional";
 
@@ -21,6 +21,10 @@ export interface StoredSecrets {
   geminiModel?: string;
   openrouterModel?: string;
   preferredProvider?: Provider;
+  langfuseSecretKey?: string;
+  langfusePublicKey?: string;
+  langfuseBaseUrl?: string;
+  langfuseEnabled?: boolean;
 }
 
 export interface SecretsSummary {
@@ -29,6 +33,9 @@ export interface SecretsSummary {
   geminiModel: string;
   openrouterModel: string;
   preferredProvider: Provider;
+  hasLangfuseKey: boolean;
+  langfuseEnabled: boolean;
+  langfuseBaseUrl?: string;
 }
 
 export interface ReportedResult {
