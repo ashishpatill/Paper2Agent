@@ -332,10 +332,20 @@ export interface ReplicationOutcomeReport {
 export interface PipelineStepOutcome {
   stepNumber: number;
   name: string;
-  outcome: "completed" | "skipped" | "failed" | "failed_tolerated";
+  outcome: "completed" | "skipped" | "failed" | "failed_tolerated" | "healed";
   detail?: string;
   attempts?: number;
   updatedAt: string;
+  healingAttempts?: HealingAttemptSummary[];
+}
+
+export interface HealingAttemptSummary {
+  id: string;
+  timestamp: string;
+  failureCategory: string;
+  solution: string;
+  success: boolean;
+  durationMs: number;
 }
 
 export interface PipelineStepOutcomesReport {
