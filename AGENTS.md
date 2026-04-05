@@ -82,10 +82,33 @@ Foundation, pipeline hardening, implementation track (steps 8-12).
 - Synthetic proxy generator for 5 data shapes (`lib/server/synthetic-data.ts`)
 - Integrated into step 9 pre-flight via `scripts/acquire-datasets.ts`
 
-### Phase 7: Production
+### Phase 7: Production (COMPLETE)
 - Multi-paper job queuing
 - Result dashboards
 - API for external consumers
+
+### Phase 8: Auto Mode & Self-Adapting Loop (DESIGN)
+Design doc: `docs/phase8-auto-mode-design.md`
+
+**Goals:**
+- **Lite-first implementation** (default) — propose a minimum viable experiment before committing to full-scale replication
+- **Self-adapting execution loop** — 3-tier execution: initial → iterative refinement → decision branching (PROCEED/REFINE/PIVOT)
+- **Parallel agent brainstorming** — when stuck, spawn 2-3 agents with different strategies and select the best plan
+- **User intent detection** — "lite PoC" vs "implement as-is" modes with clear scope communication
+- **Scope awareness** — estimate complexity, compute requirements, and data dependencies before running
+- **Graceful degradation** — NaN/Inf sentinel, scope reduction, versioned rollback instead of hard failure
+
+**Patterns adopted from AutoResearchClaw:**
+- 3-tier execution loop (inspired by AutoResearchClaw Stages 10-15)
+- Parallel agent spawning (inspired by `use_sessions_spawn` and multi-agent pipelines)
+- NaN/Inf sentinel and degenerate cycle detection
+- Decision branching with max pivot limits
+- Versioned rollback and atomic checkpoints
+
+**Future: Deep CLI integration (Phase 9+)**
+- Paper2Agent handles lite PoC → exports `implementation_plan.json` → deep orchestration CLI takes over for full-scale replication
+- Keeps Paper2Agent focused on fast local iteration and proof-of-concept validation
+- Defers heavy lifting (multi-GPU, full paper writing, conference formatting) to specialized tool
 
 ## Commands
 ```

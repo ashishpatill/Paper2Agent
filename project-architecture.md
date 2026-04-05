@@ -1414,7 +1414,8 @@ These were explicitly deferred in the design doc:
 | **Phase 4: Sandbox & Safety** | ✅ COMPLETE | Docker sandbox, anti-fabrication registry, MCP re-wrap, feasibility checks, convergence guards |
 | **Phase 5: Cross-Run Learning** | ✅ COMPLETE | Evolution store, prompt overlays, skill transfer, pipeline integration |
 | **Phase 6: Data Acquisition** | ✅ COMPLETE | Dataset resolver, cached downloader, synthetic proxy generator, step 9 integration |
-| **Phase 7: Production** | 🟡 SUBSTANTIALLY COMPLETE | Job queuing ✅, result dashboards ✅, APIs ✅; External API docs ⚠️ |
+| **Phase 7: Production** | ✅ COMPLETE | Job queuing, result dashboards, APIs, provider-agnostic pipeline, live step indicators |
+| **Phase 8: Auto Mode & Self-Adapting Loop** | 📋 DESIGN | Design doc: `docs/phase8-auto-mode-design.md` |
 
 ### 20.2 Feature Checklist
 
@@ -1422,46 +1423,53 @@ These were explicitly deferred in the design doc:
 |---------|--------|-------|
 | Paper URL intake | ✅ | Via cheerio + pdf-parse |
 | PDF upload | ✅ | Server-side extraction |
-| Provider-backed analysis | ✅ | Gemini + OpenRouter |
+| Provider-backed analysis | ✅ | Gemini + OpenRouter + Claude CLI |
 | Repository inference | ✅ | LLM-based with manual override |
 | Feasibility preflight | ✅ | GPU requirements, complexity checks |
 | Queued background jobs | ✅ | Scheduler with file-based locks |
 | Live logs streaming | ✅ | SSE + tail |
 | Pipeline timeline | ✅ | Step-level progress |
+| Live step indicator | ✅ | Animated spinner below progress bar |
 | Stall detection | ✅ | Heartbeat monitor |
-| Self-healing retry | ✅ | Max 2 retries per step, auto-fix strategies |
+| Rate limit detection | ✅ | Claude usage exhaustion caught gracefully |
+| Self-healing retry | ✅ | Max 2 retries, exponential backoff (5s→15s) |
 | Job control (pause/resume/stop) | ✅ | Via control API |
 | Feedback ingestion | ✅ | Stored + consumed in future runs |
 | Workspace validation | ✅ | 9-point check |
 | Results dashboards | ✅ | Artifact-backed |
-| Skill graph UI | ✅ (partial) | Missing `implement` stage column |
+| Skill graph UI | ✅ | All 6 stages displayed with dependency badges |
 | Setup/readiness assessment | ✅ | Environment + tutorial scan |
 | Replication outcome reports | ✅ | Lifecycle tracking |
 | Cross-run learning | ✅ | Time-decay JSONL |
 | Dataset acquisition | ✅ | Multi-source + synthetic fallback |
 | Sandbox execution | ✅ | Subprocess + Docker |
 | Anti-fabrication | ✅ | Metric verification |
-| External API docs | ⚠️ | APIs exist, no documentation |
-| Comprehensive tests | ❌ | Test infrastructure exists, no tests written |
-| Multi-provider failover | ❌ | Manual provider selection only |
+| Provider-agnostic pipeline | ✅ | All 13 steps use `run_pipeline_agent` (claude/openrouter/gemini/codex) |
+| Multi-provider failover | ✅ | Automatic Gemini ↔ OpenRouter fallback |
+| Results export | ✅ | CSV + Markdown (printable as PDF) |
+| External API docs | ✅ | `docs/api-reference.md` |
+| Comprehensive tests | ✅ | 123 tests (unit + integration) |
+| E2E API tests | ✅ | Full API surface coverage |
+| Lite-first implementation | ❌ | Phase 8 design complete, not yet implemented |
+| Self-adapting loop | ❌ | Phase 8 design complete, not yet implemented |
+| Parallel agent brainstorming | ❌ | Phase 8 design complete, not yet implemented |
+| Deep CLI integration | ❌ | Phase 9+ (future) |
 
 ### 20.3 Remaining Work (Prioritized)
 
-**High Priority:**
-1. Fix `implement` stage missing from skill graph UI (1-line fix)
-2. Write comprehensive test suite
-3. External API documentation
-
-**Medium Priority:**
-4. Skill graph edge visualization
-5. Results export (PDF/CSV)
-6. Multi-provider automatic failover
+**Phase 8 Implementation (High Priority):**
+1. Lite-first implementation mode (Step 13a: Pre-Flight Scope Analysis)
+2. Self-adapting execution loop (3-tier: initial → refine → pivot)
+3. Parallel agent brainstorming for stuck steps
+4. User intent detection from job notes
+5. NaN/Inf sentinel and scope reduction logic
 
 **Low Priority (Deferred):**
-7. Multi-agent debate for code generation
-8. Git-as-experiment-tracker
-9. Sentinel watchdogs
-10. Agentic sandbox mode
+6. Multi-agent debate for hypothesis validation (AutoResearchClaw pattern)
+7. Git-as-experiment-tracker
+8. Sentinel watchdogs
+9. Agentic sandbox mode (beyond subprocess/Docker)
+10. Deep CLI integration (Phase 9+)
 
 ---
 
