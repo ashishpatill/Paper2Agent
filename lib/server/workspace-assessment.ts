@@ -3,7 +3,12 @@ import path from "node:path";
 
 import { loadWorkspaceArtifacts } from "./results";
 import { parseEnvironmentManagerReport } from "./setup-readiness";
-import type { JobRecord, SetupReadiness, WorkspaceAssessment } from "./types";
+import type {
+  JobRecord,
+  PipelineStepOutcome,
+  SetupReadiness,
+  WorkspaceAssessment
+} from "./types";
 
 async function pathExists(filePath: string) {
   try {
@@ -124,6 +129,7 @@ function buildRequirements(job: JobRecord) {
 function buildMilestones(options: {
   job: JobRecord;
   markers: Set<string>;
+  stepOutcomes: Map<number, PipelineStepOutcome>;
   setup: SetupReadiness;
   hasWorkspace: boolean;
   hasGapAnalysis: boolean;
@@ -132,6 +138,11 @@ function buildMilestones(options: {
   hasValidation: boolean;
 }) {
   const completed: string[] = [];
+  const stepSatisfied = (stepNumber: number) => {
+    const outcome = options.stepOutcomes.get(stepNumber)?.outcome;
+    return outcome === "completed" || outcome === "skipped";
+  };
+  const stepCompleted = (stepNumber: number) => options.stepOutcomes.get(stepNumber)?.outcome === "completed";
 
   if (options.job.analysis) {
     completed.push("Paper analyzed");
@@ -139,31 +150,37 @@ function buildMilestones(options: {
   if (options.job.repositoryUrl) {
     completed.push("Repository identified");
   }
-  if (options.hasWorkspace || ["01_setup_done", "02_clone_done", "03_folders_done", "04_context7_done"].every((marker) => options.markers.has(marker))) {
+  if (
+    options.hasWorkspace ||
+    [1, 2, 3, 4].every(stepSatisfied) ||
+    ["01_setup_done", "02_clone_done", "03_folders_done", "04_context7_done"].every((marker) =>
+      options.markers.has(marker)
+    )
+  ) {
     completed.push("Workspace prepared");
   }
   if (options.setup.environmentReportFound && options.setup.tutorialScanFound) {
     completed.push("Initial setup inspected");
   }
-  if (options.setup.environmentReady) {
+  if (options.setup.environmentReady || stepCompleted(5)) {
     completed.push("Environment bootstrapped");
   }
-  if (options.markers.has("05_step2_done")) {
+  if (stepCompleted(6)) {
     completed.push("Tutorial execution completed");
   }
-  if (options.markers.has("05_step3_done")) {
+  if (stepCompleted(7)) {
     completed.push("Tool extraction completed");
   }
-  if (options.markers.has("05_step4_done") || options.markers.has("06_mcp_done")) {
+  if (stepCompleted(8) || stepCompleted(18) || options.markers.has("06_mcp_done")) {
     completed.push("MCP packaging completed");
   }
-  if (options.hasGapAnalysis || options.markers.has("05_step8_done")) {
+  if (options.hasGapAnalysis || stepCompleted(12)) {
     completed.push("Coverage and gap analysis completed");
   }
-  if (options.hasExperimentResults || options.markers.has("05_step10_done")) {
+  if (options.hasExperimentResults || stepCompleted(14)) {
     completed.push("Implementation experiments produced artifacts");
   }
-  if (options.hasResultsComparison || options.markers.has("05_step11_done")) {
+  if (options.hasResultsComparison || stepCompleted(15)) {
     completed.push("Observed results compared with the paper");
   }
   if (options.hasValidation) {
@@ -181,10 +198,10 @@ function buildMilestones(options: {
   if (!options.setup.environmentReady) {
     remaining.push("Create and verify the local environment");
   }
-  if (!options.markers.has("05_step2_done")) {
+  if (!stepSatisfied(6)) {
     remaining.push("Run tutorial notebooks or executable examples");
   }
-  if (!options.hasGapAnalysis) {
+  if (!options.hasGapAnalysis && !stepSatisfied(12)) {
     remaining.push("Determine tutorial-only vs implementation-track coverage");
   }
   if (!options.hasExperimentResults) {
@@ -203,6 +220,7 @@ function buildMilestones(options: {
 function determineLifecycle(options: {
   job: JobRecord;
   markers: Set<string>;
+  stepOutcomes: Map<number, PipelineStepOutcome>;
   hasWorkspace: boolean;
   setup: SetupReadiness;
   hasExperimentResults: boolean;
@@ -237,9 +255,9 @@ function determineLifecycle(options: {
     return "implementation_in_progress" as const;
   }
   if (
-    options.markers.has("05_step2_done") ||
-    options.markers.has("05_step3_done") ||
-    options.markers.has("05_step4_done")
+    options.stepOutcomes.get(6)?.outcome === "completed" ||
+    options.stepOutcomes.get(7)?.outcome === "completed" ||
+    options.stepOutcomes.get(8)?.outcome === "completed"
   ) {
     return "tutorial_track_ready" as const;
   }
@@ -288,6 +306,7 @@ function buildSummary(options: {
 function buildBlockers(options: {
   job: JobRecord;
   setup: SetupReadiness;
+  stepOutcomes: Map<number, PipelineStepOutcome>;
   setupReportBlockers: string[];
   hasExperimentResults: boolean;
   hasResultsComparison: boolean;
@@ -309,6 +328,13 @@ function buildBlockers(options: {
   if (!options.hasResultsComparison && (options.job.analysis?.reported_results.length || 0) > 0) {
     blockers.push("No comparison artifact exists yet to show whether observed results match the paper.");
   }
+  for (const step of options.stepOutcomes.values()) {
+    if (step.outcome === "failed" || step.outcome === "failed_tolerated") {
+      blockers.push(
+        `Step ${step.stepNumber} (${step.name}) ${step.outcome === "failed_tolerated" ? "failed but was tolerated" : "failed"}${step.detail ? `: ${step.detail}` : "."}`
+      );
+    }
+  }
   blockers.push(...options.setupReportBlockers);
   if (options.job.validationReport?.overall === "fail") {
     const failedChecks = options.job.validationReport.checks
@@ -326,13 +352,19 @@ function buildBlockers(options: {
   return uniqueItems(blockers);
 }
 
-export async function buildWorkspaceAssessment(job: JobRecord): Promise<WorkspaceAssessment> {
+export async function buildWorkspaceAssessment(
+  job: JobRecord,
+  preloadedArtifacts?: Awaited<ReturnType<typeof loadWorkspaceArtifacts>>
+): Promise<WorkspaceAssessment> {
   const hasWorkspace = job.workspacePath ? await pathExists(job.workspacePath) : false;
   const [markers, fallbackSetup, artifacts] = await Promise.all([
     loadPipelineMarkers(job.workspacePath),
     buildSetupReadiness(job.workspacePath),
-    loadWorkspaceArtifacts(job.workspacePath)
+    preloadedArtifacts ? Promise.resolve(preloadedArtifacts) : loadWorkspaceArtifacts(job.workspacePath)
   ]);
+  const stepOutcomes = new Map(
+    (artifacts.pipelineStepOutcomes?.steps || []).map((step) => [step.stepNumber, step])
+  );
 
   const setup = artifacts.setupReadiness
     ? {
@@ -354,6 +386,7 @@ export async function buildWorkspaceAssessment(job: JobRecord): Promise<Workspac
   const lifecycle = determineLifecycle({
     job,
     markers,
+    stepOutcomes,
     hasWorkspace,
     setup,
     hasExperimentResults,
@@ -364,6 +397,7 @@ export async function buildWorkspaceAssessment(job: JobRecord): Promise<Workspac
   const { completed, remaining } = buildMilestones({
     job,
     markers,
+    stepOutcomes,
     setup,
     hasWorkspace,
     hasGapAnalysis: Boolean(artifacts.gapAnalysis),
@@ -387,6 +421,7 @@ export async function buildWorkspaceAssessment(job: JobRecord): Promise<Workspac
     blockers: buildBlockers({
       job,
       setup,
+      stepOutcomes,
       setupReportBlockers: artifacts.setupReadiness?.blockers || [],
       hasExperimentResults,
       hasResultsComparison
@@ -400,8 +435,10 @@ export async function buildWorkspaceAssessment(job: JobRecord): Promise<Workspac
 }
 
 export async function attachWorkspaceAssessment(job: JobRecord): Promise<JobRecord> {
+  const artifacts = await loadWorkspaceArtifacts(job.workspacePath);
   return {
     ...job,
-    workspaceAssessment: await buildWorkspaceAssessment(job)
+    pipelineStepOutcomes: artifacts.pipelineStepOutcomes ?? undefined,
+    workspaceAssessment: await buildWorkspaceAssessment(job, artifacts)
   };
 }

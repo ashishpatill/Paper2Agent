@@ -186,6 +186,20 @@ export async function diagnosePipelineFailure(options: {
     return "Claude Code authentication failed during the Paper2Agent pipeline. Re-authenticate the `claude` CLI, then retry.";
   }
 
+  // Scan step output files for usage exhaustion errors from the Claude CLI
+  const claudeOutputsDir = path.join(options.workspacePath, "claude_outputs");
+  const outputFiles = await readdir(claudeOutputsDir).catch(() => [] as string[]);
+  for (const file of outputFiles.filter((f) => f.endsWith("_output.json"))) {
+    const content = await readTextIfExists(path.join(claudeOutputsDir, file));
+    const resetMatch = content.match(/out of extra usage[^"]*resets ([^"\\]+)/i);
+    if (resetMatch) {
+      return `Claude subscription usage limit reached (resets ${resetMatch[1].trim()}). Wait for the limit to reset, then retry the job. The pipeline steps use your Claude Code subscription — not the OpenRouter key.`;
+    }
+    if (/usage limit reached|out of extra usage/i.test(content)) {
+      return "Claude subscription usage limit reached. Wait for the daily limit to reset, then retry. The pipeline steps run via your Claude Code subscription — not the OpenRouter key.";
+    }
+  }
+
   if (/No space left on device/i.test(logText)) {
     return "The pipeline could not write the cloned repository or workspace because the drive ran out of free space. Free up disk space, then retry the job.";
   }
