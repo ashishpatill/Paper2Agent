@@ -123,3 +123,34 @@ process.stderr.write(`\nDataset acquisition: ${downloaded} downloaded, ${synthet
 
 const stats = downloader.cacheStats();
 process.stderr.write(`Cache: ${stats.entries} entries, ${stats.totalSizeMB} MB\n`);
+
+// Write structured report for UI consumption
+const syntheticDatasets: string[] = [];
+const downloadedDatasets: string[] = [];
+const failedDatasets: string[] = [];
+
+for (const ds of resolved) {
+  if (!ds.requirement.publicly_available || ds.needsAuth) {
+    syntheticDatasets.push(ds.requirement.name);
+  } else if (!ds.downloadCommand && !ds.downloadUrl) {
+    failedDatasets.push(ds.requirement.name);
+  } else {
+    downloadedDatasets.push(ds.requirement.name);
+  }
+}
+
+const report = {
+  generatedAt: new Date().toISOString(),
+  total: resolved.length,
+  downloaded: downloadedDatasets.length,
+  synthetic: syntheticDatasets.length,
+  failed: failedDatasets.length,
+  downloadedDatasets,
+  syntheticDatasets,
+  failedDatasets,
+};
+
+const reportsDir = path.join(workspacePath, "reports");
+fs.mkdirSync(reportsDir, { recursive: true });
+fs.writeFileSync(path.join(reportsDir, "dataset-acquisition.json"), JSON.stringify(report, null, 2), "utf-8");
+process.stderr.write(`Wrote dataset acquisition report: ${path.join(reportsDir, "dataset-acquisition.json")}\n`);

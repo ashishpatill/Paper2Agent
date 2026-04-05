@@ -109,10 +109,33 @@ const DATASET_PATTERNS: DatasetPattern[] = [
 
 // Well-known dataset name → source mapping for common datasets without URL
 const WELLKNOWN_DATASETS: Record<string, { source: DatasetSource; command: string; notes: string }> = {
+  // Vision
   "imagenet": { source: "url", command: "# ImageNet requires manual download from https://image-net.org/", notes: "ImageNet requires academic registration" },
-  "coco": { source: "url", command: "python -c \"from pycocotools.coco import COCO; # see cocodataset.org\"", notes: "COCO dataset — download from cocodataset.org" },
-  "penn treebank": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('ptb_text_only')\"", notes: "Penn Treebank via HuggingFace" },
-  "ptb": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('ptb_text_only')\"", notes: "Penn Treebank via HuggingFace" },
+  "imagenet-1k": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('imagenet-1k', split='train', streaming=True); print('Streaming ImageNet available')\"", notes: "ImageNet-1K via HuggingFace (streaming)" },
+  "coco": { source: "url", command: "wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip -P data/ && wget http://images.cocodataset.org/zips/train2017.zip -P data/", notes: "COCO 2017 dataset" },
+  "cifar-10": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('cifar10'); ds.save_to_disk('data/cifar10')\"", notes: "CIFAR-10 via HuggingFace" },
+  "cifar-100": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('cifar100'); ds.save_to_disk('data/cifar100')\"", notes: "CIFAR-100 via HuggingFace" },
+  "svhn": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('svhn', 'cropped_digits'); ds.save_to_disk('data/svhn')\"", notes: "SVHN via HuggingFace" },
+  // NLP
+  "penn treebank": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('ptb_text_only'); ds.save_to_disk('data/ptb')\"", notes: "Penn Treebank via HuggingFace" },
+  "ptb": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('ptb_text_only'); ds.save_to_disk('data/ptb')\"", notes: "Penn Treebank via HuggingFace" },
+  "wikitext-2": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('wikitext', 'wikitext-2-raw-v1'); ds.save_to_disk('data/wikitext-2')\"", notes: "WikiText-2 via HuggingFace" },
+  "wikitext-103": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('wikitext', 'wikitext-103-raw-v1'); ds.save_to_disk('data/wikitext-103')\"", notes: "WikiText-103 via HuggingFace" },
+  "sst-2": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('sst2'); ds.save_to_disk('data/sst2')\"", notes: "SST-2 sentiment via HuggingFace" },
+  "bookcorpus": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('bookcorpus', streaming=True); print('Streaming BookCorpus available')\"", notes: "BookCorpus via HuggingFace (streaming, large)" },
+  "common crawl": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('c4', 'en', streaming=True); print('Streaming C4/CommonCrawl available')\"", notes: "Common Crawl (C4) via HuggingFace streaming" },
+  // Tabular / structured
+  "iris": { source: "uci", command: "python -c \"from ucimlrepo import fetch_ucirepo; ds = fetch_ucirepo(id=53); import pandas as pd; pd.concat([ds.data.features, ds.data.targets], axis=1).to_csv('data/iris.csv', index=False)\"", notes: "Iris dataset via UCI ML repo" },
+  "adult": { source: "uci", command: "python -c \"from ucimlrepo import fetch_ucirepo; ds = fetch_ucirepo(id=2); import pandas as pd; pd.concat([ds.data.features, ds.data.targets], axis=1).to_csv('data/adult.csv', index=False)\"", notes: "Adult/Census Income via UCI ML repo" },
+  "breast cancer": { source: "uci", command: "python -c \"from ucimlrepo import fetch_ucirepo; ds = fetch_ucirepo(id=17); import pandas as pd; pd.concat([ds.data.features, ds.data.targets], axis=1).to_csv('data/breast_cancer.csv', index=False)\"", notes: "Breast Cancer Wisconsin via UCI ML repo" },
+  "diabetes": { source: "huggingface", command: "python -c \"from sklearn.datasets import load_diabetes; import pandas as pd; d = load_diabetes(as_frame=True); d.frame.to_csv('data/diabetes.csv', index=False)\"", notes: "Diabetes dataset via sklearn" },
+  "california housing": { source: "huggingface", command: "python -c \"from sklearn.datasets import fetch_california_housing; import pandas as pd; d = fetch_california_housing(as_frame=True); d.frame.to_csv('data/california_housing.csv', index=False)\"", notes: "California Housing via sklearn" },
+  // Reinforcement learning
+  "atari": { source: "url", command: "pip install ale-py && python -c \"import ale_py; print('Atari Learning Environment installed')\"", notes: "Atari via ALE-py (requires ROM files)" },
+  "openai gym": { source: "url", command: "pip install gymnasium && python -c \"import gymnasium; print('Gymnasium installed')\"", notes: "OpenAI Gym/Gymnasium environments" },
+  // Speech / audio
+  "librispeech": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('librispeech_asr', 'clean', split='train.100'); ds.save_to_disk('data/librispeech_100h')\"", notes: "LibriSpeech 100h clean split via HuggingFace" },
+  "commonvoice": { source: "huggingface", command: "python -c \"from datasets import load_dataset; ds = load_dataset('mozilla-foundation/common_voice_11_0', 'en', split='train'); ds.save_to_disk('data/commonvoice')\"", notes: "Mozilla Common Voice via HuggingFace" },
 };
 
 // ---------------------------------------------------------------------------
@@ -184,12 +207,44 @@ export function resolveDataset(req: DatasetRequirement): ResolvedDataset {
     }
   }
 
-  // Fallback: assume it might be a HuggingFace dataset
+  // Fallback: try HuggingFace search + auto-load by slug, then synthetic
+  const slug = req.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
   return {
     ...base,
-    source: "unknown",
-    notes: `Could not resolve dataset "${req.name}". Try searching HuggingFace (huggingface.co/datasets) or providing a direct URL.`,
-    downloadCommand: `# TODO: manually locate and download "${req.name}"`,
+    source: "huggingface",
+    needsAuth: false,
+    notes: `Auto-guessing HuggingFace slug "${slug}" for "${req.name}". If this fails, a synthetic proxy will be generated.`,
+    downloadCommand: [
+      `python - <<'PYEOF'`,
+      `import sys`,
+      `try:`,
+      `    from datasets import load_dataset`,
+      `    ds = load_dataset("${slug}")`,
+      `    ds.save_to_disk("data/${slug}")`,
+      `    print("Downloaded: ${slug}")`,
+      `except Exception as e:`,
+      `    print(f"HuggingFace auto-load failed for '${slug}': {e}", file=sys.stderr)`,
+      `    # Try huggingface_hub search as a second pass`,
+      `    try:`,
+      `        from huggingface_hub import list_datasets`,
+      `        candidates = list(list_datasets(search="${req.name}", limit=3))`,
+      `        if candidates:`,
+      `            best = candidates[0].id`,
+      `            print(f"Found candidate: {best}", file=sys.stderr)`,
+      `            ds2 = load_dataset(best)`,
+      `            ds2.save_to_disk(f"data/{best.split('/')[-1]}")`,
+      `            print(f"Downloaded: {best}")`,
+      `        else:`,
+      `            sys.exit(1)`,
+      `    except Exception as e2:`,
+      `        print(f"Search also failed: {e2}", file=sys.stderr)`,
+      `        sys.exit(1)`,
+      `PYEOF`,
+    ].join("\n"),
   };
 }
 
