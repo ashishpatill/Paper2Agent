@@ -156,6 +156,90 @@ run_claude_with_heartbeat() {
   return $exit_code
 }
 
+# Return the Paper2Agent script root directory.
+# Prefers PAPER2AGENT_SCRIPT_DIR env var if set; else falls back to dirname of
+# the calling script (via $0), which works when step scripts call this function.
+get_script_dir() {
+  if [[ -n "${PAPER2AGENT_SCRIPT_DIR:-}" ]]; then
+    echo "$PAPER2AGENT_SCRIPT_DIR"
+  elif [[ -n "${SCRIPT_DIR:-}" ]]; then
+    echo "$SCRIPT_DIR"
+  else
+    cd "$(dirname "$0")" && pwd
+  fi
+}
+
+# Run the AI pipeline agent for a given prompt template and output file.
+# Reads PAPER2AGENT_CLI (default: "claude"), PAPER2AGENT_MODEL,
+# PAPER2AGENT_API_KEY, PAPER2AGENT_BASE_URL env vars to choose the backend.
+#
+# Usage: run_pipeline_agent <prompt_template_path> <output_file>
+run_pipeline_agent() {
+  local prompt_path="$1"
+  local output_file="$2"
+  local cli="${PAPER2AGENT_CLI:-claude}"
+  local _script_dir
+  _script_dir="$(get_script_dir)"
+
+  case "$cli" in
+    claude)
+      local model="${PAPER2AGENT_MODEL:-claude-sonnet-4-20250514}"
+      local claude_bin
+      claude_bin="$(require_cli claude)"
+      local envsubst_bin
+      envsubst_bin="$(require_cli envsubst)"
+      "$envsubst_bin" < "$prompt_path" | "$claude_bin" \
+        --model "$model" \
+        --verbose \
+        --output-format stream-json \
+        --dangerously-skip-permissions \
+        -p - > "$output_file"
+      ;;
+
+    codex)
+      local model="${PAPER2AGENT_MODEL:-gpt-4o}"
+      local codex_bin
+      codex_bin="$(require_cli codex)"
+      local envsubst_bin
+      envsubst_bin="$(require_cli envsubst)"
+      local prompt_text
+      prompt_text="$("$envsubst_bin" < "$prompt_path")"
+      OPENAI_BASE_URL="${PAPER2AGENT_BASE_URL:-}" \
+      OPENAI_API_KEY="${PAPER2AGENT_API_KEY:-}" \
+      "$codex_bin" --model "$model" --approval-mode full-auto "$prompt_text" \
+        > "$output_file" 2>&1
+      ;;
+
+    openrouter|gemini)
+      local npx_bin
+      npx_bin="$(require_cli npx)"
+      local envsubst_bin
+      envsubst_bin="$(require_cli envsubst)"
+      "$envsubst_bin" < "$prompt_path" | \
+        AGENT_BASE_URL="${PAPER2AGENT_BASE_URL:-}" \
+        AGENT_API_KEY="${PAPER2AGENT_API_KEY:-}" \
+        AGENT_MODEL="${PAPER2AGENT_MODEL:-}" \
+        AGENT_CWD="${MAIN_DIR:-$(pwd)}" \
+        "$npx_bin" tsx "$_script_dir/scripts/ai-agent.ts" > "$output_file"
+      ;;
+
+    *)
+      echo "run_pipeline_agent: unknown CLI '${cli}', falling back to claude" >&2
+      local model="${PAPER2AGENT_MODEL:-claude-sonnet-4-20250514}"
+      local claude_bin
+      claude_bin="$(require_cli claude)"
+      local envsubst_bin
+      envsubst_bin="$(require_cli envsubst)"
+      "$envsubst_bin" < "$prompt_path" | "$claude_bin" \
+        --model "$model" \
+        --verbose \
+        --output-format stream-json \
+        --dangerously-skip-permissions \
+        -p - > "$output_file"
+      ;;
+  esac
+}
+
 search_text() {
   local pattern="$1"
   shift
