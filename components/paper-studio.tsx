@@ -553,6 +553,12 @@ export function PaperStudio({
                     <span className="truncate">{activeJob.currentStage || "Running pipeline…"}</span>
                   </div>
                 )}
+                {activeJob.status === "running_pipeline" && activeJob.lastLogLine?.toLowerCase().includes("self-healing") && (
+                  <div className="flex items-center gap-2 text-sm text-amber-600">
+                    <LoaderCircle className="h-4 w-4 animate-spin shrink-0" />
+                    <span className="truncate">Self-healing in progress…</span>
+                  </div>
+                )}
                 <div className="space-y-2 rounded-2xl border border-border/70 bg-background/70 px-4 py-3">
                   <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                     Current stage
