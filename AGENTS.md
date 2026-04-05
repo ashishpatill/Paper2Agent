@@ -87,28 +87,23 @@ Foundation, pipeline hardening, implementation track (steps 8-12).
 - Result dashboards
 - API for external consumers
 
-### Phase 8: Auto Mode & Self-Adapting Loop (DESIGN)
+### Phase 8: Auto Mode & Self-Adapting Loop (IMPLEMENTED)
 Design doc: `docs/phase8-auto-mode-design.md`
 
-**Goals:**
-- **Lite-first implementation** (default) — propose a minimum viable experiment before committing to full-scale replication
-- **Self-adapting execution loop** — 3-tier execution: initial → iterative refinement → decision branching (PROCEED/REFINE/PIVOT)
-- **Parallel agent brainstorming** — when stuck, spawn 2-3 agents with different strategies and select the best plan
-- **User intent detection** — "lite PoC" vs "implement as-is" modes with clear scope communication
-- **Scope awareness** — estimate complexity, compute requirements, and data dependencies before running
-- **Graceful degradation** — NaN/Inf sentinel, scope reduction, versioned rollback instead of hard failure
+**Implemented:**
+- **Self-healing pipeline recovery** (`lib/server/self-healing.ts`, `scripts/run-self-healing.ts`)
+  - Failure classifier: 10 failure categories (missing_dependency, import_error, runtime_error, resource_error, network_error, NaN/Inf, clarification, template contamination, logic, configuration, unknown)
+  - Solution generator: context-aware solutions per failure type (pip install, scope reduction, NaN fix, disk cleanup, CPU fallback, etc.)
+  - Solution executor: applies fixes via shell commands, records outcomes
+  - Local healing store (`.paper2agent/local/healing.jsonl`): persists problem-solution pairs with success/failure counts
+  - Integration into `Paper2Agent.sh`: after standard retries fail, self-healing attempts recovery before giving up
+- **Dashboard indicator**: "Self-healing in progress…" shown when pipeline is healing
 
-**Patterns adopted from AutoResearchClaw:**
-- 3-tier execution loop (inspired by AutoResearchClaw Stages 10-15)
-- Parallel agent spawning (inspired by `use_sessions_spawn` and multi-agent pipelines)
-- NaN/Inf sentinel and degenerate cycle detection
-- Decision branching with max pivot limits
-- Versioned rollback and atomic checkpoints
-
-**Future: Deep CLI integration (Phase 9+)**
-- Paper2Agent handles lite PoC → exports `implementation_plan.json` → deep orchestration CLI takes over for full-scale replication
-- Keeps Paper2Agent focused on fast local iteration and proof-of-concept validation
-- Defers heavy lifting (multi-GPU, full paper writing, conference formatting) to specialized tool
+**Pending (Phase 8b-c):**
+- Lite-first implementation mode (Step 13a: Pre-Flight Scope Analysis)
+- Parallel agent brainstorming for stuck steps
+- User intent detection from job notes
+- NaN/Inf sentinel integration at experiment level
 
 ## Commands
 ```
