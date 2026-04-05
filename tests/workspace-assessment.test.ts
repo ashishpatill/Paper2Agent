@@ -129,3 +129,148 @@ test("workspace assessment explains when a run failed after setup completed", as
     await rm(workspacePath, { recursive: true, force: true });
   }
 });
+
+test("workspace assessment respects explicit skipped tutorial execution outcomes", async () => {
+  const workspacePath = await mkdtemp(path.join(os.tmpdir(), "paper2agent-assessment-"));
+
+  try {
+    await mkdir(path.join(workspacePath, "reports"), { recursive: true });
+
+    await Promise.all([
+      writeFile(
+        path.join(workspacePath, "reports", "setup-readiness.json"),
+        JSON.stringify({
+          generatedAt: "2026-04-04T10:00:00.000Z",
+          repository: {
+            name: "DemoRepo",
+            path: "repo/DemoRepo",
+            mainCodePaths: [],
+            notebookPaths: []
+          },
+          environment: {
+            reportFound: true,
+            ready: true,
+            environmentName: "demo-env",
+            pythonVersion: "3.11.9",
+            installCommands: [],
+            validationChecksPassed: 4,
+            validationChecksTotal: 4
+          },
+          tutorials: {
+            scanFound: true,
+            includeListFound: true,
+            success: true,
+            totalScanned: 2,
+            includedInTools: 0,
+            runnableCandidates: 0,
+            includedPaths: []
+          },
+          blockers: [],
+          requirements: [],
+          nextSteps: ["Proceed with direct source-code extraction if the repository has no runnable tutorials."]
+        }),
+        "utf8"
+      ),
+      writeFile(
+        path.join(workspacePath, "reports", "pipeline-step-outcomes.json"),
+        JSON.stringify({
+          generatedAt: "2026-04-04T10:10:00.000Z",
+          steps: [
+            {
+              stepNumber: 6,
+              name: "Execute tutorial notebooks",
+              outcome: "skipped",
+              detail: "No runnable tutorials were selected.",
+              updatedAt: "2026-04-04T10:10:00.000Z"
+            }
+          ]
+        }),
+        "utf8"
+      )
+    ]);
+
+    const assessment = await buildWorkspaceAssessment(makeJob(workspacePath, { status: "completed" }));
+
+    assert.equal(assessment.lifecycle, "setup_ready");
+    assert.equal(
+      assessment.remainingMilestones.includes("Run tutorial notebooks or executable examples"),
+      false
+    );
+    assert.ok(
+      assessment.remainingMilestones.includes(
+        "Proceed with direct source-code extraction if the repository has no runnable tutorials."
+      )
+    );
+  } finally {
+    await rm(workspacePath, { recursive: true, force: true });
+  }
+});
+
+test("workspace assessment surfaces tolerated pipeline failures as blockers", async () => {
+  const workspacePath = await mkdtemp(path.join(os.tmpdir(), "paper2agent-assessment-"));
+
+  try {
+    await mkdir(path.join(workspacePath, "reports"), { recursive: true });
+
+    await Promise.all([
+      writeFile(
+        path.join(workspacePath, "reports", "setup-readiness.json"),
+        JSON.stringify({
+          generatedAt: "2026-04-04T10:00:00.000Z",
+          repository: {
+            name: "DemoRepo",
+            path: "repo/DemoRepo",
+            mainCodePaths: [],
+            notebookPaths: []
+          },
+          environment: {
+            reportFound: true,
+            ready: true,
+            environmentName: "demo-env",
+            pythonVersion: "3.11.9",
+            installCommands: [],
+            validationChecksPassed: 4,
+            validationChecksTotal: 4
+          },
+          tutorials: {
+            scanFound: true,
+            includeListFound: true,
+            success: true,
+            totalScanned: 1,
+            includedInTools: 1,
+            runnableCandidates: 1,
+            includedPaths: ["repo/DemoRepo/notebooks/tutorial.ipynb"]
+          },
+          blockers: [],
+          requirements: [],
+          nextSteps: []
+        }),
+        "utf8"
+      ),
+      writeFile(
+        path.join(workspacePath, "reports", "pipeline-step-outcomes.json"),
+        JSON.stringify({
+          generatedAt: "2026-04-04T10:10:00.000Z",
+          steps: [
+            {
+              stepNumber: 6,
+              name: "Execute tutorial notebooks",
+              outcome: "failed_tolerated",
+              detail: "Step failed after retries but was tolerated because it is non-critical.",
+              updatedAt: "2026-04-04T10:10:00.000Z"
+            }
+          ]
+        }),
+        "utf8"
+      )
+    ]);
+
+    const assessment = await buildWorkspaceAssessment(makeJob(workspacePath, { status: "completed" }));
+
+    assert.ok(
+      assessment.blockers.some((blocker) => blocker.includes("Step 6 (Execute tutorial notebooks) failed but was tolerated"))
+    );
+  } finally {
+    await rm(workspacePath, { recursive: true, force: true });
+  }
+});

@@ -1,21 +1,27 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { listJobs } from "@/lib/server/jobs";
 import { attachWorkspaceAssessment } from "@/lib/server/workspace-assessment";
 import {
   workspaceAssessmentBadgeVariant,
   workspaceAssessmentLabel
 } from "@/components/workspace-assessment-card";
+import { LiveJobsRefresher } from "@/components/live-jobs-refresher";
+
+const ACTIVE_STATUSES = new Set(["queued", "analyzing", "running_pipeline", "paused"]);
 
 export default async function JobsListPage() {
   const jobs = await Promise.all((await listJobs()).map((job) => attachWorkspaceAssessment(job)));
+  const hasActiveJobs = jobs.some((j) => ACTIVE_STATUSES.has(j.status));
 
   return (
     <div className="space-y-6">
+      <LiveJobsRefresher hasActiveJobs={hasActiveJobs} />
+
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">
@@ -43,61 +49,67 @@ export default async function JobsListPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
-          {jobs.map((job) => (
-            <Link key={job.id} href={`/jobs/${job.id}`} className="block">
-              <Card className="transition-colors hover:border-primary/30">
-                <CardContent className="flex items-center gap-4 p-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-3">
-                      <p className="truncate text-sm font-semibold">
-                        {job.analysis?.title || job.projectName || job.paperUrl || job.uploadedPdfName || job.id}
-                      </p>
+        <div className="space-y-4">
+          {jobs.map((job) => {
+            const isActive = ACTIVE_STATUSES.has(job.status);
+            return (
+              <Link key={job.id} href={`/jobs/${job.id}`} className="block">
+                <Card className="transition-colors hover:border-primary/30">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <p className="truncate font-semibold leading-snug">
+                          {job.analysis?.title || job.projectName || job.paperUrl || job.uploadedPdfName || job.id}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                          {isActive && job.currentStage && (
+                            <span className="flex items-center gap-1.5 text-foreground/70">
+                              <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                              {job.currentStage}
+                            </span>
+                          )}
+                          {!isActive && job.error && (
+                            <span className="truncate max-w-sm text-destructive/80 text-xs">{job.error}</span>
+                          )}
+                          {!isActive && !job.error && job.workspaceAssessment && (
+                            <span>{job.workspaceAssessment.summary}</span>
+                          )}
+                          <span className="text-xs shrink-0">{formatRelativeTime(job.updatedAt)}</span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 pt-0.5">
+                        {job.progressPercent != null && isActive && (
+                          <span className="text-xs font-medium tabular-nums text-muted-foreground">
+                            {job.progressPercent}%
+                          </span>
+                        )}
+                        {job.workspaceAssessment ? (
+                          <Badge variant={workspaceAssessmentBadgeVariant(job.workspaceAssessment.lifecycle)}>
+                            {workspaceAssessmentLabel(job.workspaceAssessment.lifecycle)}
+                          </Badge>
+                        ) : null}
+                        <Badge
+                          variant={
+                            job.status === "completed"
+                              ? "success"
+                              : job.status === "failed"
+                                ? "destructive"
+                                : "outline"
+                          }
+                        >
+                          {job.status.replace(/_/g, " ")}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      {job.currentStage && <span>{job.currentStage}</span>}
-                      {job.workspaceAssessment && <span>{job.workspaceAssessment.summary}</span>}
-                      {job.repositoryUrl && (
-                        <span className="truncate max-w-48">{job.repositoryUrl}</span>
-                      )}
-                      <span>{formatRelativeTime(job.updatedAt)}</span>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {job.progressPercent != null && !isTerminal(job.status) && (
-                      <span className="text-xs font-medium tabular-nums text-muted-foreground">
-                        {job.progressPercent}%
-                      </span>
-                    )}
-                    {job.workspaceAssessment ? (
-                      <Badge variant={workspaceAssessmentBadgeVariant(job.workspaceAssessment.lifecycle)}>
-                        {workspaceAssessmentLabel(job.workspaceAssessment.lifecycle)}
-                      </Badge>
-                    ) : null}
-                    <Badge
-                      variant={
-                        job.status === "completed"
-                          ? "success"
-                          : job.status === "failed"
-                            ? "destructive"
-                            : "outline"
-                      }
-                    >
-                      {job.status.replace(/_/g, " ")}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
   );
-}
-
-function isTerminal(status: string) {
-  return ["completed", "failed", "stopped", "not_implementable", "needs_repo"].includes(status);
 }
 
 function formatRelativeTime(value: string) {

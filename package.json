@@ -11,7 +11,9 @@
     "start": "next start",
     "lint": "eslint .",
     "job:run": "node --import tsx scripts/run-paper-job.ts",
-    "job:validate": "node --import tsx scripts/validate-workspace.ts"
+    "job:validate": "node --import tsx scripts/validate-workspace.ts",
+    "test": "node --import tsx --test 'tests/unit/**/*.test.ts' 'tests/*.test.ts'",
+    "test:e2e": "node --import tsx --test tests/e2e/**/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.22.0",

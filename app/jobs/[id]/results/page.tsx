@@ -10,6 +10,7 @@ import { ReplicationOutcomeCard } from "@/components/replication-outcome-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { WorkspaceAssessmentCard } from "@/components/workspace-assessment-card";
+import { RetryButton } from "@/components/retry-button";
 
 export default async function ResultsPage({
   params
@@ -26,13 +27,16 @@ export default async function ResultsPage({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">
-          Results
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {job.analysis?.title || job.projectName || job.id}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">
+            Results
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {job.analysis?.title || job.projectName || job.id}
+          </p>
+        </div>
+        <RetryButton job={job} />
       </div>
 
       {!hasAnalysis ? (
@@ -45,6 +49,23 @@ export default async function ResultsPage({
         <div className="space-y-6">
           {job.workspaceAssessment ? <WorkspaceAssessmentCard assessment={job.workspaceAssessment} /> : null}
           {artifacts.replicationOutcome ? <ReplicationOutcomeCard report={artifacts.replicationOutcome} /> : null}
+
+          {/* Dataset acquisition warning */}
+          {artifacts.datasetAcquisition && artifacts.datasetAcquisition.synthetic > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+              <p className="font-medium">
+                {artifacts.datasetAcquisition.synthetic === artifacts.datasetAcquisition.total
+                  ? "All datasets replaced with synthetic proxies"
+                  : `${artifacts.datasetAcquisition.synthetic} of ${artifacts.datasetAcquisition.total} dataset(s) replaced with synthetic proxies`}
+              </p>
+              <p className="mt-1 text-xs opacity-80">
+                Experiment results may not match the paper&apos;s reported numbers since real data could not be auto-downloaded.
+                {artifacts.datasetAcquisition.syntheticDatasets.length > 0 && (
+                  <> Synthetic: {artifacts.datasetAcquisition.syntheticDatasets.join(", ")}.</>
+                )}
+              </p>
+            </div>
+          )}
 
           {/* Gap Analysis */}
           <CoverageGauge analysis={job.analysis!} gapAnalysis={artifacts.gapAnalysis} />

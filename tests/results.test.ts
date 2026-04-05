@@ -97,6 +97,29 @@ test("workspace artifact loader reads pipeline result files", async () => {
     );
 
     await writeFile(
+      path.join(reportsPath, "pipeline-step-outcomes.json"),
+      JSON.stringify({
+        generatedAt: "2026-04-01T09:30:00.000Z",
+        steps: [
+          {
+            stepNumber: 5,
+            name: "Setup Python environment & scan tutorials",
+            outcome: "completed",
+            updatedAt: "2026-04-01T09:05:00.000Z"
+          },
+          {
+            stepNumber: 6,
+            name: "Execute tutorial notebooks",
+            outcome: "skipped",
+            detail: "No runnable tutorials were selected.",
+            updatedAt: "2026-04-01T09:06:00.000Z"
+          }
+        ]
+      }),
+      "utf8"
+    );
+
+    await writeFile(
       path.join(reportsPath, "gap_analysis.json"),
       JSON.stringify({
         coverage_score: 0.5,
@@ -188,6 +211,8 @@ test("workspace artifact loader reads pipeline result files", async () => {
     assert.equal(artifacts.setupReadiness?.environment.ready, true);
     assert.equal(artifacts.replicationOutcome?.lifecycle, "results_compared");
     assert.equal(artifacts.replicationOutcome?.comparison.matchScore, 0.67);
+    assert.equal(artifacts.pipelineStepOutcomes?.steps.length, 2);
+    assert.equal(artifacts.pipelineStepOutcomes?.steps[1]?.outcome, "skipped");
     assert.equal(artifacts.setupReadiness?.tutorials.includedInTools, 1);
     assert.equal(artifacts.gapAnalysis?.track, "hybrid");
     assert.equal(artifacts.resultsComparison?.overall_match, "approximate");
