@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { ensureAppDirectories, jobsRoot } from "./fs";
@@ -161,6 +161,17 @@ export async function reconcileJob(jobId: string) {
     logPath: current.logPath || pipelinePaths.logPath,
     error: diagnosis || "The pipeline worker stopped responding and did not complete."
   }));
+}
+
+export async function deleteJob(jobId: string) {
+  const job = await getJob(jobId);
+  if (!job) return false;
+  if (!TERMINAL_JOB_STATUSES.has(job.status)) {
+    throw new Error(`Cannot delete a job with status "${job.status}". Stop it first.`);
+  }
+  await rm(jobDirectory(jobId), { recursive: true, force: true });
+  jobWriteChains.delete(jobId);
+  return true;
 }
 
 export function isTerminalJobStatus(status: JobStatus) {

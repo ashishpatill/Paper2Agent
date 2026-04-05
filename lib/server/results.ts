@@ -4,6 +4,7 @@ import path from "node:path";
 import type {
   FixLoopState,
   GapAnalysis,
+  PipelineStepOutcomesReport,
   ReplicationOutcomeReport,
   ResultsComparison,
   SetupReadinessReport
@@ -33,14 +34,27 @@ export interface ExperimentSummaryArtifact {
   }>;
 }
 
+export interface DatasetAcquisitionReport {
+  generatedAt: string;
+  total: number;
+  downloaded: number;
+  synthetic: number;
+  failed: number;
+  downloadedDatasets: string[];
+  syntheticDatasets: string[];
+  failedDatasets: string[];
+}
+
 export interface WorkspaceArtifacts {
   setupReadiness: SetupReadinessReport | null;
   replicationOutcome: ReplicationOutcomeReport | null;
+  pipelineStepOutcomes: PipelineStepOutcomesReport | null;
   gapAnalysis: GapAnalysis | null;
   resultsComparison: ResultsComparison | null;
   fixLoopState: FixLoopState | null;
   experimentSummary: ExperimentSummaryArtifact | null;
   experimentResults: ExperimentResultArtifact[];
+  datasetAcquisition: DatasetAcquisitionReport | null;
 }
 
 async function readJsonIfExists<T>(filePath: string) {
@@ -59,24 +73,28 @@ export async function loadWorkspaceArtifacts(
     return {
       setupReadiness: null,
       replicationOutcome: null,
+      pipelineStepOutcomes: null,
       gapAnalysis: null,
       resultsComparison: null,
       fixLoopState: null,
       experimentSummary: null,
-      experimentResults: []
+      experimentResults: [],
+      datasetAcquisition: null
     };
   }
 
   const reportsPath = path.join(workspacePath, "reports");
   const experimentResultsPath = path.join(reportsPath, "experiment_results");
 
-  const [setupReadiness, replicationOutcome, gapAnalysis, resultsComparison, fixLoopState, experimentSummary] = await Promise.all([
+  const [setupReadiness, replicationOutcome, pipelineStepOutcomes, gapAnalysis, resultsComparison, fixLoopState, experimentSummary, datasetAcquisition] = await Promise.all([
     readJsonIfExists<SetupReadinessReport>(path.join(reportsPath, "setup-readiness.json")),
     readJsonIfExists<ReplicationOutcomeReport>(path.join(reportsPath, "replication-outcome.json")),
+    readJsonIfExists<PipelineStepOutcomesReport>(path.join(reportsPath, "pipeline-step-outcomes.json")),
     readJsonIfExists<GapAnalysis>(path.join(reportsPath, "gap_analysis.json")),
     readJsonIfExists<ResultsComparison>(path.join(reportsPath, "results_comparison.json")),
     readJsonIfExists<FixLoopState>(path.join(reportsPath, "fix_loop", "fix_loop_state.json")),
-    readJsonIfExists<ExperimentSummaryArtifact>(path.join(experimentResultsPath, "summary.json"))
+    readJsonIfExists<ExperimentSummaryArtifact>(path.join(experimentResultsPath, "summary.json")),
+    readJsonIfExists<DatasetAcquisitionReport>(path.join(reportsPath, "dataset-acquisition.json"))
   ]);
 
   let experimentResults: ExperimentResultArtifact[] = [];
@@ -114,10 +132,12 @@ export async function loadWorkspaceArtifacts(
   return {
     setupReadiness,
     replicationOutcome,
+    pipelineStepOutcomes,
     gapAnalysis,
     resultsComparison,
     fixLoopState,
     experimentSummary,
-    experimentResults
+    experimentResults,
+    datasetAcquisition
   };
 }

@@ -210,6 +210,7 @@ export interface JobRecord {
   implementability?: ImplementabilityAssessment;
   analysis?: PaperAnalysis;
   pipelineProgress?: PipelineProgress;
+  pipelineStepOutcomes?: PipelineStepOutcomesReport;
   userFeedback?: UserFeedback[];
   validationReport?: ValidationReport;
   workspaceAssessment?: WorkspaceAssessment;
@@ -326,6 +327,20 @@ export interface ReplicationOutcomeReport {
   };
   blockers: string[];
   nextSteps: string[];
+}
+
+export interface PipelineStepOutcome {
+  stepNumber: number;
+  name: string;
+  outcome: "completed" | "skipped" | "failed" | "failed_tolerated";
+  detail?: string;
+  attempts?: number;
+  updatedAt: string;
+}
+
+export interface PipelineStepOutcomesReport {
+  generatedAt: string;
+  steps: PipelineStepOutcome[];
 }
 
 export interface WorkspaceAssessment {
