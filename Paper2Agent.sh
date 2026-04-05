@@ -488,21 +488,86 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
         fi
       fi
     else
-      # All retries exhausted — log but continue pipeline for non-critical steps
-      # Steps 2, 5, 6, 7 are non-critical (tutorials, coverage, benchmarks)
-      NON_CRITICAL_STEPS="2 5 6 7"
-      if echo "$NON_CRITICAL_STEPS" | grep -qw "$i"; then
-        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ⚠️  Step $i failed after $MAX_STEP_RETRIES retries — skipping (non-critical)" >&2 || true
-        log_progress $((4+i)) "$STEP_NAME" "error"
-        STEP_STATUS_LIST[$i]="failed (non-critical, skipped)"
-        touch "$MARK"  # Mark as done so pipeline continues
-        record_step_outcome $((4+i)) "$STEP_NAME" "failed_tolerated" "Step failed after retries but was tolerated because it is non-critical." "$step_attempt"
-      else
-        log_progress $((4+i)) "$STEP_NAME" "error"
-        STEP_STATUS_LIST[$i]="failed"
-        record_step_outcome $((4+i)) "$STEP_NAME" "failed" "Step failed after retries and stopped the pipeline." "$step_attempt"
-        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ❌ Step $i failed after $MAX_STEP_RETRIES retries — stopping pipeline" >&2 || true
-        exit $step_exit_code
+      # All standard retries exhausted — attempt self-healing before giving up
+      echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🩺 Standard retries exhausted — attempting self-healing..." >&2 || true
+
+      STEP_OUTPUT_FILE="$MAIN_DIR/claude_outputs/step${i}_output.json"
+      HEALING_ATTEMPTED=false
+      HEALING_SUCCESS=false
+
+      # Run self-healing via tsx
+      NPX_HEALING="$(command -v npx 2>/dev/null || echo "")"
+      if [[ -n "$NPX_HEALING" && -f "$STEP_OUTPUT_FILE" ]]; then
+        HEALING_OUTPUT=$("$NPX_HEALING" tsx "$SCRIPT_DIR/scripts/run-self-healing.ts" \
+          "$i" "$STEP_NAME" "$MAIN_DIR" "$step_exit_code" "$STEP_OUTPUT_FILE" 2>&1 || true)
+
+        if echo "$HEALING_OUTPUT" | grep -qi "HEALING_SUCCESS"; then
+          HEALING_ATTEMPTED=true
+          HEALING_SUCCESS=true
+          echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ✅ Self-healing successful — re-running step..." >&2 || true
+
+          # Re-run the step one more time after healing
+          set +e
+          case $i in
+            1) bash $SCRIPT_DIR/scripts/05_run_step1_setup_env.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" "$TUTORIAL_FILTER" ;;
+            2) bash $SCRIPT_DIR/scripts/05_run_step2_execute_tutorials.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+            3) bash $SCRIPT_DIR/scripts/05_run_step3_extract_tools.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+            4) bash $SCRIPT_DIR/scripts/05_run_step4_wrap_mcp.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+            5) bash $SCRIPT_DIR/scripts/05_run_step5_generate_coverage.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+            6) bash $SCRIPT_DIR/scripts/05_run_step6_extract_benchmarks.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+            7) bash $SCRIPT_DIR/scripts/05_run_step7_benchmark_assessment.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+            8) bash $SCRIPT_DIR/scripts/05_run_step8_gap_analysis.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+            9) bash $SCRIPT_DIR/scripts/05_run_step9_paper_coder.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+            10) bash $SCRIPT_DIR/scripts/05_run_step10_experiment_runner.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+            11) bash $SCRIPT_DIR/scripts/05_run_step11_results_comparator.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+            12) bash $SCRIPT_DIR/scripts/05_run_step12_fix_loop.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+            13) bash $SCRIPT_DIR/scripts/05_run_step13_mcp_rewrap.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+          esac
+          step_exit_code=$?
+          set -e
+
+          if [[ $step_exit_code -eq 0 ]]; then
+            step_succeeded=true
+          fi
+        elif echo "$HEALING_OUTPUT" | grep -qi "HEALING_ATTEMPTED"; then
+          HEALING_ATTEMPTED=true
+          echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🩺 Self-healing attempted but did not fully resolve" >&2 || true
+          echo "$HEALING_OUTPUT" | grep -i "status:" | while read -r line; do
+            echo "     ↳ $line" >&2 || true
+          done
+        fi
+      fi
+
+      # If healing didn't help, proceed with normal failure handling
+      if [[ "$step_succeeded" != "true" ]]; then
+        # All retries exhausted — log but continue pipeline for non-critical steps
+        # Steps 2, 5, 6, 7 are non-critical (tutorials, coverage, benchmarks)
+        NON_CRITICAL_STEPS="2 5 6 7"
+        if echo "$NON_CRITICAL_STEPS" | grep -qw "$i"; then
+          if [[ "$HEALING_SUCCESS" == "true" ]]; then
+            log_progress $((4+i)) "$STEP_NAME" "complete"
+            STEP_STATUS_LIST[$i]="healed and completed"
+            record_step_outcome $((4+i)) "$STEP_NAME" "completed" "Step was healed and completed successfully." 1
+          else
+            echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ⚠️  Step $i failed after $MAX_STEP_RETRIES retries — skipping (non-critical)" >&2 || true
+            log_progress $((4+i)) "$STEP_NAME" "error"
+            STEP_STATUS_LIST[$i]="failed (non-critical, skipped)"
+            touch "$MARK"  # Mark as done so pipeline continues
+            record_step_outcome $((4+i)) "$STEP_NAME" "failed_tolerated" "Step failed after retries but was tolerated because it is non-critical." "$step_attempt"
+          fi
+        else
+          if [[ "$HEALING_SUCCESS" == "true" ]]; then
+            log_progress $((4+i)) "$STEP_NAME" "complete"
+            STEP_STATUS_LIST[$i]="healed and completed"
+            record_step_outcome $((4+i)) "$STEP_NAME" "completed" "Step was healed and completed successfully." 1
+          else
+            log_progress $((4+i)) "$STEP_NAME" "error"
+            STEP_STATUS_LIST[$i]="failed"
+            record_step_outcome $((4+i)) "$STEP_NAME" "failed" "Step failed after retries and self-healing." "$step_attempt"
+            echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ❌ Step $i failed after retries and self-healing — stopping pipeline" >&2 || true
+            exit $step_exit_code
+          fi
+        fi
       fi
     fi
   fi
