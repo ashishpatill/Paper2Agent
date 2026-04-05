@@ -4,7 +4,7 @@ import path from "node:path";
 import { ensureAppDirectories, uploadsRoot } from "../lib/server/fs";
 import { getJob, updateJob } from "../lib/server/jobs";
 import { scheduleQueuedJobs } from "../lib/server/job-runner";
-import { analyzePaper, chooseProvider } from "../lib/server/llm";
+import { analyzePaperWithFailover, chooseProvider } from "../lib/server/llm";
 import { extractPaperFromPdf, extractPaperFromUrl } from "../lib/server/paper-intake";
 import {
   buildPipelineProgress,
@@ -197,7 +197,7 @@ async function main() {
     await patchJob(
       jobId,
       {
-        currentStage: `Analyzing the paper with ${chosen.provider}.`,
+        currentStage: `Analyzing the paper with ${chosen.provider} (failover ready).`,
         progressPercent: 34
       },
       { markProgress: true }
@@ -205,19 +205,26 @@ async function main() {
 
     await ensureJobCanContinue(jobId);
 
-    const analysis = await analyzePaper({
-      provider: chosen.provider,
-      model: chosen.model,
-      apiKey:
-        chosen.provider === "gemini"
-          ? secrets.geminiApiKey || ""
-          : secrets.openrouterApiKey || "",
+    const { analysis, provider: actualProvider, failoverUsed } = await analyzePaperWithFailover({
+      secrets,
       sourceText: source.rawText,
       titleHint: source.titleHint,
       repositoryUrlHint: job.repositoryUrl || source.repositoryUrlHint,
       sourceUrl: job.paperUrl,
       notes: job.notes
     });
+
+    if (failoverUsed) {
+      console.warn(`[ProviderFailover] Primary provider failed, using ${actualProvider} as fallback`);
+      await patchJob(
+        jobId,
+        {
+          currentStage: `Primary provider failed, falling back to ${actualProvider}.`,
+          lastLogLine: `Failover: using ${actualProvider} instead of ${chosen.provider}`
+        },
+        { markProgress: true }
+      );
+    }
 
     const enrichedAnalysis = {
       ...analysis,

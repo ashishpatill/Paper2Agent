@@ -74,6 +74,97 @@ export function chooseProvider(secrets: StoredSecrets) {
   return null;
 }
 
+/**
+ * Returns all available providers in priority order (preferred first, then fallback).
+ * Enables automatic failover when the primary provider is unavailable or fails.
+ */
+export function getProviderOrder(secrets: StoredSecrets): Array<{ provider: Provider; model: string; apiKey: string }> {
+  const providers: Array<{ provider: Provider; model: string; apiKey: string }> = [];
+  const seen = new Set<Provider>();
+
+  function addProvider(provider: Provider, apiKey: string | undefined, model: string | undefined) {
+    if (apiKey && !seen.has(provider)) {
+      seen.add(provider);
+      providers.push({
+        provider,
+        model: provider === "gemini" ? normalizeGeminiModel(model) : (model || "openai/gpt-5.2-mini"),
+        apiKey
+      });
+    }
+  }
+
+  // Add preferred provider first
+  if (secrets.preferredProvider === "gemini") {
+    addProvider("gemini", secrets.geminiApiKey, secrets.geminiModel);
+  } else if (secrets.preferredProvider === "openrouter") {
+    addProvider("openrouter", secrets.openrouterApiKey, secrets.openrouterModel);
+  }
+
+  // Add fallback provider
+  if (secrets.preferredProvider !== "gemini") {
+    addProvider("gemini", secrets.geminiApiKey, secrets.geminiModel);
+  }
+  if (secrets.preferredProvider !== "openrouter") {
+    addProvider("openrouter", secrets.openrouterApiKey, secrets.openrouterModel);
+  }
+
+  return providers;
+}
+
+/**
+ * Analyze a paper with automatic provider failover.
+ * Tries the primary provider first; if it fails, falls back to the next available provider.
+ */
+export async function analyzePaperWithFailover(options: {
+  secrets: StoredSecrets;
+  sourceText: string;
+  titleHint?: string;
+  repositoryUrlHint?: string;
+  sourceUrl?: string;
+  notes?: string;
+}): Promise<{ analysis: PaperAnalysis; provider: Provider; model: string; failoverUsed: boolean }> {
+  const providers = getProviderOrder(options.secrets);
+
+  if (providers.length === 0) {
+    throw new Error("No AI provider configured. Set GEMINI_API_KEY or OPENROUTER_API_KEY in settings.");
+  }
+
+  const errors: Array<{ provider: Provider; error: string }> = [];
+
+  for (let i = 0; i < providers.length; i++) {
+    const p = providers[i];
+    try {
+      const analysis = await analyzePaper({
+        provider: p.provider,
+        model: p.model,
+        apiKey: p.apiKey,
+        sourceText: options.sourceText,
+        titleHint: options.titleHint,
+        repositoryUrlHint: options.repositoryUrlHint,
+        sourceUrl: options.sourceUrl,
+        notes: options.notes
+      });
+
+      return {
+        analysis,
+        provider: p.provider,
+        model: p.model,
+        failoverUsed: i > 0
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      errors.push({ provider: p.provider, error: message });
+
+      // Don't retry the same provider — move to next in the failover chain
+      console.warn(`[ProviderFailover] ${p.provider} failed: ${message}. Trying next provider...`);
+    }
+  }
+
+  // All providers failed
+  const errorDetails = errors.map((e) => `${e.provider}: ${e.error}`).join("\n");
+  throw new Error(`All AI providers failed for paper analysis:\n${errorDetails}`);
+}
+
 export async function analyzePaper(options: {
   provider: Provider;
   model: string;
