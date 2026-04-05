@@ -27,16 +27,22 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
     setError(null);
     setSaved(false);
 
+    // Only send API key fields when the user actually typed something.
+    // Password inputs are empty on re-render, so sending "" would delete saved keys.
+    const geminiKey = String(formData.get("geminiApiKey") ?? "").trim();
+    const orKey = String(formData.get("openrouterApiKey") ?? "").trim();
+    const payload: Record<string, string | undefined> = {
+      geminiModel: String(formData.get("geminiModel") ?? ""),
+      openrouterModel: String(formData.get("openrouterModel") ?? ""),
+      preferredProvider: String(formData.get("preferredProvider") ?? "")
+    };
+    if (geminiKey) payload.geminiApiKey = geminiKey;
+    if (orKey) payload.openrouterApiKey = orKey;
+
     const response = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        geminiApiKey: formData.get("geminiApiKey"),
-        openrouterApiKey: formData.get("openrouterApiKey"),
-        geminiModel: formData.get("geminiModel"),
-        openrouterModel: formData.get("openrouterModel"),
-        preferredProvider: formData.get("preferredProvider")
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -77,12 +83,29 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
         </CardContent>
       </Card>
 
+      {/* How the pipeline uses keys */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">How keys are used</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <div className="rounded-lg border border-border/50 px-4 py-3 space-y-1">
+            <p className="font-medium">Paper analysis (intake only)</p>
+            <p className="text-muted-foreground text-xs">Gemini or OpenRouter — used once to read the paper and extract metadata. Takes ~30 seconds.</p>
+          </div>
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-1">
+            <p className="font-medium">Pipeline steps 1–13 (all AI work)</p>
+            <p className="text-muted-foreground text-xs">Uses the <span className="font-mono text-xs">claude</span> CLI and your <strong>Claude subscription</strong> — not your OpenRouter or Gemini key. Make sure you have Claude Code installed and authenticated.</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* API Keys */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">API Provider Keys</CardTitle>
           <CardDescription>
-            Keys are stored server-side in a gitignored file and never sent back to the client.
+            Used for paper intake only. Keys stored server-side in a gitignored file, never returned to the client.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -193,7 +216,12 @@ export function SettingsForm({ initialSettings }: { initialSettings: SecretsSumm
             ok={settings.hasOpenRouterKey}
             detail={settings.hasOpenRouterKey ? settings.openrouterModel : "Not configured"}
           />
-          <ReadinessRow label="Pipeline" ok detail="Paper2Agent.sh available" />
+          <ReadinessRow
+            label="Claude CLI (pipeline)"
+            ok
+            detail="All 13 pipeline steps run via 'claude' CLI using your subscription"
+            highlight
+          />
           <ReadinessRow label="Storage" ok detail=".paper2agent/local/secrets.json" />
         </CardContent>
       </Card>
@@ -226,14 +254,16 @@ function CliRow({
 function ReadinessRow({
   label,
   ok,
-  detail
+  detail,
+  highlight
 }: {
   label: string;
   ok: boolean;
   detail: string;
+  highlight?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2.5">
+    <div className={`flex items-center justify-between rounded-lg border px-3 py-2.5 ${highlight ? "border-amber-500/30 bg-amber-500/5" : "border-border/50"}`}>
       <div>
         <p className="text-sm font-medium">{label}</p>
         <p className="text-xs text-muted-foreground">{detail}</p>

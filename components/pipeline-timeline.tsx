@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Circle, Loader2, SkipForward, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Circle, Loader2, SkipForward, XCircle } from "lucide-react";
 
-import type { JobRecord, StepStatus } from "@/lib/server/types";
+import type { JobRecord, PipelineStepOutcome, StepStatus } from "@/lib/server/types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -29,6 +29,11 @@ export function PipelineTimeline({ job: initialJob }: { job: JobRecord }) {
   const completedCount = steps?.filter((s) => s.status === "completed").length ?? 0;
   const progressPct = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
+  // Build a lookup from stepNumber → outcome for cross-referencing
+  const outcomeMap = new Map<number, PipelineStepOutcome>(
+    (job.pipelineStepOutcomes?.steps ?? []).map((o) => [o.stepNumber, o])
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -45,7 +50,14 @@ export function PipelineTimeline({ job: initialJob }: { job: JobRecord }) {
       <CardContent>
         <div className="space-y-1">
           {steps && steps.length > 0
-            ? steps.map((step) => <StepRow key={step.stepNumber} step={step} isCurrent={step.stepNumber === currentStep} />)
+            ? steps.map((step) => (
+                <StepRow
+                  key={step.stepNumber}
+                  step={step}
+                  outcome={outcomeMap.get(step.stepNumber)}
+                  isCurrent={step.stepNumber === currentStep}
+                />
+              ))
             : PIPELINE_STEP_DEFINITIONS.map((s) => (
                 <div
                   key={s.stepNumber}
@@ -68,23 +80,34 @@ export function PipelineTimeline({ job: initialJob }: { job: JobRecord }) {
   );
 }
 
-function StepRow({ step, isCurrent }: { step: StepStatus; isCurrent: boolean }) {
-  const Icon = STATUS_ICONS[step.status];
+function StepRow({
+  step,
+  outcome,
+  isCurrent,
+}: {
+  step: StepStatus;
+  outcome: PipelineStepOutcome | undefined;
+  isCurrent: boolean;
+}) {
+  const toleratedFailure = outcome?.outcome === "failed_tolerated";
+  const Icon = toleratedFailure ? AlertTriangle : STATUS_ICONS[step.status];
 
   return (
     <div
       className={cn(
         "flex items-start gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
         isCurrent && "bg-primary/5 ring-1 ring-primary/20",
-        step.status === "failed" && "bg-destructive/5"
+        step.status === "failed" && !toleratedFailure && "bg-destructive/5",
+        toleratedFailure && "bg-amber-500/5"
       )}
     >
       <Icon
         className={cn(
           "mt-0.5 h-4 w-4 shrink-0",
-          step.status === "completed" && "text-success",
+          step.status === "completed" && !toleratedFailure && "text-success",
           step.status === "running" && "animate-spin text-primary",
-          step.status === "failed" && "text-destructive",
+          step.status === "failed" && !toleratedFailure && "text-destructive",
+          toleratedFailure && "text-amber-500",
           step.status === "skipped" && "text-muted-foreground",
           step.status === "pending" && "text-muted-foreground/50"
         )}
@@ -103,20 +126,50 @@ function StepRow({ step, isCurrent }: { step: StepStatus; isCurrent: boolean }) 
                   : `${Math.round(step.durationSeconds / 60)}m`}
               </span>
             )}
-            {step.status !== "pending" && step.status !== "completed" && (
+            {outcome?.attempts != null && outcome.attempts > 1 && (
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {outcome.attempts} attempts
+              </span>
+            )}
+            {toleratedFailure ? (
+              <Badge
+                variant="outline"
+                className="border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400"
+              >
+                tolerated failure
+              </Badge>
+            ) : step.status !== "pending" && step.status !== "completed" ? (
               <Badge
                 variant={step.status === "failed" ? "destructive" : "outline"}
                 className="text-[10px]"
               >
                 {step.status}
               </Badge>
-            )}
+            ) : null}
           </div>
         </div>
-        {step.lastOutput && isCurrent && (
+
+        {/* Outcome detail — shown for skips, tolerated failures, and completed steps with a note */}
+        {outcome?.detail && (
+          <p
+            className={cn(
+              "mt-0.5 text-xs",
+              toleratedFailure
+                ? "text-amber-600/80 dark:text-amber-400/80"
+                : "text-muted-foreground"
+            )}
+          >
+            {outcome.detail}
+          </p>
+        )}
+
+        {/* Live output while running */}
+        {step.lastOutput && isCurrent && !outcome?.detail && (
           <p className="mt-1 truncate text-xs text-muted-foreground">{step.lastOutput}</p>
         )}
-        {step.error && (
+
+        {/* Hard failure message */}
+        {step.error && !toleratedFailure && (
           <p className="mt-1 text-xs text-destructive">{step.error}</p>
         )}
       </div>
@@ -129,5 +182,5 @@ const STATUS_ICONS = {
   running: Loader2,
   completed: CheckCircle2,
   skipped: SkipForward,
-  failed: XCircle
+  failed: XCircle,
 } as const;

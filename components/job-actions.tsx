@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { CheckCircle, LoaderCircle, MessageSquare, Pause, Play, RefreshCcw, Square } from "lucide-react";
+import { CheckCircle, LoaderCircle, MessageSquare, Pause, Play, RefreshCcw, Square, Trash2 } from "lucide-react";
 
 import type { JobRecord } from "@/lib/server/types";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export function JobActions({ job }: { job: JobRecord }) {
   const canResume = job.status === "paused";
   const canStop = ["queued", "analyzing", "running_pipeline", "paused"].includes(job.status);
   const canRetry = ["failed", "needs_repo", "completed", "stopped", "not_implementable"].includes(job.status);
+  const canDelete = ["failed", "needs_repo", "completed", "stopped", "not_implementable"].includes(job.status);
   const canValidate = job.status === "completed" && Boolean(job.workspacePath);
   const canFeedback = ["running_pipeline", "paused"].includes(job.status);
 
@@ -45,6 +46,18 @@ export function JobActions({ job }: { job: JobRecord }) {
     }
     const newJob = (await res.json()) as JobRecord;
     router.push(`/jobs/${newJob.id}`);
+  }
+
+  async function handleDelete() {
+    if (!confirm("Delete this job permanently? This cannot be undone.")) return;
+    setError(null);
+    setAction("delete");
+    const res = await fetch(`/api/jobs/${job.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setError(await res.text());
+      return;
+    }
+    router.push("/jobs");
   }
 
   async function handleValidate() {
@@ -113,6 +126,18 @@ export function JobActions({ job }: { job: JobRecord }) {
           <Button variant="outline" size="sm" disabled={isPending} onClick={wrap(handleValidate)}>
             {isPending && action === "validate" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
             Validate
+          </Button>
+        )}
+        {canDelete && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-destructive/30 text-destructive hover:bg-destructive/5"
+            disabled={isPending}
+            onClick={wrap(handleDelete)}
+          >
+            {isPending && action === "delete" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            Delete
           </Button>
         )}
         {canFeedback && (

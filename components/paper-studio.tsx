@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Bot,
+  Download,
   FileUp,
   KeyRound,
   Link2,
@@ -216,6 +217,38 @@ export function PaperStudio({
     setJobId(nextJob.id);
     setJobs((current) => [nextJob, ...current.filter((item) => item.id !== nextJob.id)]);
     setControlAction(null);
+  }
+
+  async function handleExport(jobId: string, format: "csv" | "markdown") {
+    setFormError(null);
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/export?format=${format}`);
+      if (!response.ok) {
+        setFormError(await response.text());
+        return;
+      }
+
+      // Extract filename from Content-Disposition header
+      const disposition = response.headers.get("Content-Disposition");
+      let filename = `job-export.${format === "csv" ? "csv" : "md"}`;
+      if (disposition) {
+        const match = disposition.match(/filename="?(.+?)"?$/);
+        if (match) filename = match[1];
+      }
+
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Export failed");
+    }
   }
 
   function loadJobIntoForm(job: JobRecord) {
@@ -572,6 +605,28 @@ export function PaperStudio({
                     >
                       Load Into Form
                     </Button>
+                    {activeJob.status === "completed" && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleExport(activeJob.id, "markdown")}
+                        >
+                          <Download className="mr-1.5 h-3.5 w-3.5" />
+                          Export Report
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void handleExport(activeJob.id, "csv")}
+                        >
+                          <Download className="mr-1.5 h-3.5 w-3.5" />
+                          Export CSV
+                        </Button>
+                      </>
+                    )}
                     {canPauseJob(activeJob) ? (
                       <Button
                         type="button"
