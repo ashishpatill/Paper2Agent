@@ -223,6 +223,26 @@ run_pipeline_agent() {
         "$npx_bin" tsx "$_script_dir/scripts/ai-agent.ts" > "$output_file"
       ;;
 
+    qwen)
+      # Qwen 3.6+ via OpenRouter (free: qwen/qwen3.6-plus:free)
+      # Uses the same ai-agent.ts with preserve_thinking enabled
+      local npx_bin
+      npx_bin="$(require_cli npx)"
+      local envsubst_bin
+      envsubst_bin="$(require_cli envsubst)"
+      local model="${PAPER2AGENT_MODEL:-qwen/qwen3.6-plus:free}"
+      local base_url="${PAPER2AGENT_BASE_URL:-https://openrouter.ai/api/v1}"
+      local api_key="${PAPER2AGENT_API_KEY:-$OPENROUTER_API_KEY}"
+      "$envsubst_bin" < "$prompt_path" | \
+        AGENT_BASE_URL="$base_url" \
+        AGENT_API_KEY="$api_key" \
+        AGENT_MODEL="$model" \
+        AGENT_CWD="${MAIN_DIR:-$(pwd)}" \
+        AGENT_PRESERVE_THINKING="true" \
+        AGENT_MAX_TURNS="${PAPER2AGENT_MAX_TURNS:-120}" \
+        "$npx_bin" tsx "$_script_dir/scripts/ai-agent.ts" > "$output_file"
+      ;;
+
     *)
       echo "run_pipeline_agent: unknown CLI '${cli}', falling back to claude" >&2
       local model="${PAPER2AGENT_MODEL:-claude-sonnet-4-20250514}"
