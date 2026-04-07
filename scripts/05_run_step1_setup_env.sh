@@ -30,6 +30,9 @@ fi
 export github_repo_name="$repo_name"
 export tutorial_filter="$tutorial_filter"
 
+# Resolve npx for downstream readiness report builder
+NPX_BIN="$(resolve_cli npx 2>/dev/null || echo "")"
+
 # Generate a temp prompt file for run_pipeline_agent (it expects a file path)
 TEMP_PROM="$MAIN_DIR/.pipeline/step1_prompt.envsubst"
 ENVSUBST_BIN="$(require_cli envsubst)"
