@@ -6,10 +6,12 @@
  * and writes JSON progress lines to stdout for the heartbeat watcher.
  *
  * Env vars:
- *   AGENT_BASE_URL  — OpenAI-compatible API base URL
- *   AGENT_API_KEY   — API key
- *   AGENT_MODEL     — Model identifier
- *   AGENT_CWD       — Working directory for bash/file tools
+ *   AGENT_BASE_URL      — OpenAI-compatible API base URL
+ *   AGENT_API_KEY       — API key
+ *   AGENT_MODEL         — Model identifier (e.g. qwen/qwen3.6-plus:free)
+ *   AGENT_CWD           — Working directory for bash/file tools
+ *   AGENT_PRESERVE_THINKING — "true" to enable preserve_thinking for Qwen 3.6+
+ *   AGENT_MAX_TURNS     — Maximum agentic loop turns (default: 120)
  */
 
 import { execSync, spawnSync } from "node:child_process";
@@ -22,9 +24,12 @@ const BASE_URL = process.env.AGENT_BASE_URL || "https://api.openai.com/v1";
 const API_KEY = process.env.AGENT_API_KEY || process.env.OPENAI_API_KEY || "";
 const MODEL = process.env.AGENT_MODEL || "gpt-4o";
 const CWD = process.env.AGENT_CWD || process.cwd();
-const MAX_TURNS = 60;
-const MAX_TOKENS_APPROX = 80_000; // trim if total message tokens exceed this
-const BASH_OUTPUT_LIMIT = 8_000;
+const PRESERVE_THINKING = process.env.AGENT_PRESERVE_THINKING === "true";
+const MAX_TURNS = parseInt(process.env.AGENT_MAX_TURNS || "120", 10);
+// Qwen 3.6 Plus: 1M context, 65K max output. Reserve half for thinking.
+const MAX_TOKENS_APPROX = 800_000; // trim if total message tokens exceed this
+const MAX_OUTPUT_TOKENS = 32_768; // generous output for complex pipeline steps
+const BASH_OUTPUT_LIMIT = 16_384; // increased from 8K for richer tool output
 
 if (!API_KEY) {
   writeResult(true, "AGENT_API_KEY is not set");
@@ -253,7 +258,9 @@ async function main() {
   const systemPrompt = `You are an expert AI coding agent. You help implement research paper pipelines.
 You have access to tools: bash, read_file, write_file, list_dir, glob_files.
 Your working directory is: ${CWD}
-Execute tasks completely and autonomously. Do not ask for clarification.`;
+Execute tasks completely and autonomously. Do not ask for clarification.
+Do not fabricate results — always run actual commands and report real output.
+If a command fails, diagnose the error and try a fix before giving up.`;
 
   let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -273,13 +280,20 @@ Execute tasks completely and autonomously. Do not ask for clarification.`;
 
     let response: OpenAI.Chat.ChatCompletion;
     try {
-      response = await client.chat.completions.create({
+      // Build request with optional preserve_thinking for Qwen 3.6+
+      const requestBody: Record<string, unknown> = {
         model: MODEL,
         messages,
         tools,
         tool_choice: "auto",
-        max_tokens: 4096
-      });
+        max_tokens: MAX_OUTPUT_TOKENS
+      };
+      if (PRESERVE_THINKING) {
+        requestBody.preserve_thinking = true;
+      }
+      response = await client.chat.completions.create(
+        requestBody as unknown as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       writeResult(true, `API error on turn ${turn}: ${msg}`);
@@ -306,10 +320,13 @@ Execute tasks completely and autonomously. Do not ask for clarification.`;
     // Execute tool calls
     const toolResults: OpenAI.Chat.ChatCompletionToolMessageParam[] = [];
     for (const toolCall of message.tool_calls) {
-      const toolName = toolCall.function.name;
+      // Access function data — compatible with various OpenAI SDK versions
+      const tc = toolCall as unknown as Record<string, unknown>;
+      const funcData = (tc.function || tc.func) as Record<string, string> | undefined;
+      const toolName = funcData?.name || "unknown";
       let args: Record<string, string> = {};
       try {
-        args = JSON.parse(toolCall.function.arguments) as Record<string, string>;
+        args = JSON.parse(funcData?.arguments || "{}") as Record<string, string>;
       } catch {
         args = {};
       }
