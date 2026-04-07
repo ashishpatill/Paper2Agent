@@ -487,85 +487,142 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13; do
         fi
       fi
     else
-      # All standard retries exhausted — attempt self-healing before giving up
-      echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🩺 Standard retries exhausted — attempting self-healing..." >&2 || true
+      # All standard retries exhausted — attempt 3-tier recovery before giving up
+      echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🩺 Standard retries exhausted — starting self-evolving recovery..." >&2 || true
 
       STEP_OUTPUT_FILE="$MAIN_DIR/claude_outputs/step${i}_output.json"
-      HEALING_ATTEMPTED=false
-      HEALING_SUCCESS=false
+      RECOVERY_SUCCESS=false
 
-      # Run self-healing via tsx
-      NPX_HEALING="$(command -v npx 2>/dev/null || echo "")"
-      if [[ -n "$NPX_HEALING" && -f "$STEP_OUTPUT_FILE" ]]; then
-        HEALING_OUTPUT=$("$NPX_HEALING" tsx "$SCRIPT_DIR/scripts/run-self-healing.ts" \
-          "$i" "$STEP_NAME" "$MAIN_DIR" "$step_exit_code" "$STEP_OUTPUT_FILE" 2>&1 || true)
+      # ── Tier 1: Pattern-based fixes (existing self-healing, already ran above) ──
+      # The pattern fixes were already attempted in the retry loop above.
+      # If we're here, they didn't work.
 
-        if echo "$HEALING_OUTPUT" | grep -qi "HEALING_SUCCESS"; then
-          HEALING_ATTEMPTED=true
-          HEALING_SUCCESS=true
-          echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ✅ Self-healing successful — re-running step..." >&2 || true
+      # ── Tier 2: Recovery Agent (diagnoses and generates fix via AI) ──
+      if [[ "$RECOVERY_SUCCESS" != "true" && -f "$STEP_OUTPUT_FILE" ]]; then
+        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🔬 Tier 2: Recovery Agent diagnosing..." >&2 || true
 
-          # Re-run the step one more time after healing
-          set +e
-          case $i in
-            1) bash $SCRIPT_DIR/scripts/05_run_step1_setup_env.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" "$TUTORIAL_FILTER" ;;
-            2) bash $SCRIPT_DIR/scripts/05_run_step2_execute_tutorials.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
-            3) bash $SCRIPT_DIR/scripts/05_run_step3_extract_tools.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
-            4) bash $SCRIPT_DIR/scripts/05_run_step4_wrap_mcp.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-            5) bash $SCRIPT_DIR/scripts/05_run_step5_generate_coverage.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-            6) bash $SCRIPT_DIR/scripts/05_run_step6_extract_benchmarks.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-            7) bash $SCRIPT_DIR/scripts/05_run_step7_benchmark_assessment.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-            8) bash $SCRIPT_DIR/scripts/05_run_step8_gap_analysis.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-            9) bash $SCRIPT_DIR/scripts/05_run_step9_paper_coder.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-            10) bash $SCRIPT_DIR/scripts/05_run_step10_experiment_runner.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-            11) bash $SCRIPT_DIR/scripts/05_run_step11_results_comparator.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-            12) bash $SCRIPT_DIR/scripts/05_run_step12_fix_loop.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
-            13) bash $SCRIPT_DIR/scripts/05_run_step13_mcp_rewrap.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
-          esac
-          step_exit_code=$?
-          set -e
+        NPX_RC="$(command -v npx 2>/dev/null || echo "")"
+        if [[ -n "$NPX_RC" ]]; then
+          RC_OUTPUT=$("$NPX_RC" tsx "$SCRIPT_DIR/scripts/recovery-agent.ts" \
+            "$i" "$STEP_NAME" "$MAIN_DIR" "$step_exit_code" "$STEP_OUTPUT_FILE" 2>&1 || true)
 
-          if [[ $step_exit_code -eq 0 ]]; then
-            step_succeeded=true
-          fi
-        elif echo "$HEALING_OUTPUT" | grep -qi "HEALING_ATTEMPTED"; then
-          HEALING_ATTEMPTED=true
-          echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🩺 Self-healing attempted but did not fully resolve" >&2 || true
-          echo "$HEALING_OUTPUT" | grep -i "status:" | while read -r line; do
+          echo "$RC_OUTPUT" | grep -i "status:" | while read -r line; do
             echo "     ↳ $line" >&2 || true
           done
+
+          if echo "$RC_OUTPUT" | grep -qi "RECOVERY_SUCCESS"; then
+            echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ✅ Recovery Agent found a fix — re-running step..." >&2 || true
+
+            # Re-run the step after recovery fix
+            set +e
+            case $i in
+              1) bash $SCRIPT_DIR/scripts/05_run_step1_setup_env.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" "$TUTORIAL_FILTER" ;;
+              2) bash $SCRIPT_DIR/scripts/05_run_step2_execute_tutorials.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+              3) bash $SCRIPT_DIR/scripts/05_run_step3_extract_tools.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+              4) bash $SCRIPT_DIR/scripts/05_run_step4_wrap_mcp.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              5) bash $SCRIPT_DIR/scripts/05_run_step5_generate_coverage.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              6) bash $SCRIPT_DIR/scripts/05_run_step6_extract_benchmarks.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              7) bash $SCRIPT_DIR/scripts/05_run_step7_benchmark_assessment.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              8) bash $SCRIPT_DIR/scripts/05_run_step8_gap_analysis.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              9) bash $SCRIPT_DIR/scripts/05_run_step9_paper_coder.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              10) bash $SCRIPT_DIR/scripts/05_run_step10_experiment_runner.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              11) bash $SCRIPT_DIR/scripts/05_run_step11_results_comparator.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              12) bash $SCRIPT_DIR/scripts/05_run_step12_fix_loop.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              13) bash $SCRIPT_DIR/scripts/05_run_step13_mcp_rewrap.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+            esac
+            step_exit_code=$?
+            set -e
+
+            if [[ $step_exit_code -eq 0 ]]; then
+              step_succeeded=true
+              RECOVERY_SUCCESS=true
+            else
+              echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ⚠️  Step still failed after recovery agent fix" >&2 || true
+            fi
+          fi
         fi
       fi
 
-      # If healing didn't help, proceed with normal failure handling
+      # ── Tier 3: Decompose step into smaller sub-steps ──
       if [[ "$step_succeeded" != "true" ]]; then
-        # All retries exhausted — log but continue pipeline for non-critical steps
-        # Steps 2, 5, 6, 7 are non-critical (tutorials, coverage, benchmarks)
+        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🔬 Tier 3: Attempting step decomposition..." >&2 || true
+
+        NPX_DC="$(command -v npx 2>/dev/null || echo "")"
+        if [[ -n "$NPX_DC" ]]; then
+          DC_OUTPUT=$("$NPX_DC" tsx "$SCRIPT_DIR/scripts/decompose-step.ts" \
+            "$i" "$STEP_NAME" "$MAIN_DIR" "$SCRIPT_DIR" 2>&1 || true)
+
+          echo "$DC_OUTPUT" | grep -i "status:" | while read -r line; do
+            echo "     ↳ $line" >&2 || true
+          done
+
+          if echo "$DC_OUTPUT" | grep -qi "DECOMPOSE_SUCCESS"; then
+            echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ✅ Step decomposed and sub-steps passed" >&2 || true
+            step_succeeded=true
+            RECOVERY_SUCCESS=true
+          elif echo "$DC_OUTPUT" | grep -qi "DECOMPOSE_NOT_APPLICABLE"; then
+            echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ⚠️  No decomposition template for this step" >&2 || true
+          fi
+        fi
+      fi
+
+      # ── Fallback: Legacy self-healing (backward compat) ──
+      if [[ "$step_succeeded" != "true" && "$RECOVERY_SUCCESS" != "true" && -f "$STEP_OUTPUT_FILE" ]]; then
+        echo "[$( date '+%Y-%m-%d %H:%M:%S' )] 🔧 Running legacy self-healing..." >&2 || true
+
+        NPX_HEALING="$(command -v npx 2>/dev/null || echo "")"
+        if [[ -n "$NPX_HEALING" ]]; then
+          HEALING_OUTPUT=$("$NPX_HEALING" tsx "$SCRIPT_DIR/scripts/run-self-healing.ts" \
+            "$i" "$STEP_NAME" "$MAIN_DIR" "$step_exit_code" "$STEP_OUTPUT_FILE" 2>&1 || true)
+
+          if echo "$HEALING_OUTPUT" | grep -qi "HEALING_SUCCESS"; then
+            set +e
+            case $i in
+              1) bash $SCRIPT_DIR/scripts/05_run_step1_setup_env.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" "$TUTORIAL_FILTER" ;;
+              2) bash $SCRIPT_DIR/scripts/05_run_step2_execute_tutorials.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+              3) bash $SCRIPT_DIR/scripts/05_run_step3_extract_tools.sh "$SCRIPT_DIR" "$MAIN_DIR" "$API_KEY" ;;
+              4) bash $SCRIPT_DIR/scripts/05_run_step4_wrap_mcp.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              5) bash $SCRIPT_DIR/scripts/05_run_step5_generate_coverage.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              6) bash $SCRIPT_DIR/scripts/05_run_step6_extract_benchmarks.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              7) bash $SCRIPT_DIR/scripts/05_run_step7_benchmark_assessment.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              8) bash $SCRIPT_DIR/scripts/05_run_step8_gap_analysis.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              9) bash $SCRIPT_DIR/scripts/05_run_step9_paper_coder.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              10) bash $SCRIPT_DIR/scripts/05_run_step10_experiment_runner.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              11) bash $SCRIPT_DIR/scripts/05_run_step11_results_comparator.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+              12) bash $SCRIPT_DIR/scripts/05_run_step12_fix_loop.sh "$SCRIPT_DIR" "$MAIN_DIR" "$repo_name" ;;
+              13) bash $SCRIPT_DIR/scripts/05_run_step13_mcp_rewrap.sh "$SCRIPT_DIR" "$MAIN_DIR" ;;
+            esac
+            step_exit_code=$?
+            set -e
+
+            if [[ $step_exit_code -eq 0 ]]; then
+              step_succeeded=true
+              RECOVERY_SUCCESS=true
+            fi
+          fi
+        fi
+      fi
+
+      # Final: handle success or failure
+      if [[ "$step_succeeded" == "true" ]]; then
+        log_progress $((4+i)) "$STEP_NAME" "complete"
+        STEP_STATUS_LIST[$i]="recovered and completed"
+        record_step_outcome $((4+i)) "$STEP_NAME" "completed" "Step recovered through self-evolving pipeline." 1
+      else
+        # Non-critical steps can be skipped
         NON_CRITICAL_STEPS="2 5 6 7"
         if echo "$NON_CRITICAL_STEPS" | grep -qw "$i"; then
-          if [[ "$HEALING_SUCCESS" == "true" ]]; then
-            log_progress $((4+i)) "$STEP_NAME" "complete"
-            STEP_STATUS_LIST[$i]="healed and completed"
-            record_step_outcome $((4+i)) "$STEP_NAME" "completed" "Step was healed and completed successfully." 1
-          else
-            echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ⚠️  Step $i failed after $MAX_STEP_RETRIES retries — skipping (non-critical)" >&2 || true
-            log_progress $((4+i)) "$STEP_NAME" "error"
-            STEP_STATUS_LIST[$i]="failed (non-critical, skipped)"
-            touch "$MARK"  # Mark as done so pipeline continues
-            record_step_outcome $((4+i)) "$STEP_NAME" "failed_tolerated" "Step failed after retries but was tolerated because it is non-critical." "$step_attempt"
-          fi
+          echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ⚠️  Step $i failed after all recovery tiers — skipping (non-critical)" >&2 || true
+          log_progress $((4+i)) "$STEP_NAME" "error"
+          STEP_STATUS_LIST[$i]="failed (non-critical, skipped)"
+          touch "$MARK"
+          record_step_outcome $((4+i)) "$STEP_NAME" "failed_tolerated" "Step failed after all recovery tiers but is non-critical." "$step_attempt"
         else
-          if [[ "$HEALING_SUCCESS" == "true" ]]; then
-            log_progress $((4+i)) "$STEP_NAME" "complete"
-            STEP_STATUS_LIST[$i]="healed and completed"
-            record_step_outcome $((4+i)) "$STEP_NAME" "completed" "Step was healed and completed successfully." 1
-          else
-            log_progress $((4+i)) "$STEP_NAME" "error"
-            STEP_STATUS_LIST[$i]="failed"
-            record_step_outcome $((4+i)) "$STEP_NAME" "failed" "Step failed after retries and self-healing." "$step_attempt"
-            echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ❌ Step $i failed after retries and self-healing — stopping pipeline" >&2 || true
-            exit $step_exit_code
-          fi
+          log_progress $((4+i)) "$STEP_NAME" "error"
+          STEP_STATUS_LIST[$i]="failed"
+          record_step_outcome $((4+i)) "$STEP_NAME" "failed" "Step failed after all recovery tiers." "$step_attempt"
+          echo "[$( date '+%Y-%m-%d %H:%M:%S' )] ❌ Step $i failed after all recovery tiers — stopping pipeline" >&2 || true
+          exit $step_exit_code
         fi
       fi
     fi
