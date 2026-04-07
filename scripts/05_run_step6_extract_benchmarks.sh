@@ -10,6 +10,7 @@ fi
 SCRIPT_DIR="$1"
 MAIN_DIR="$2"
 REPO_NAME="$3"
+source "$SCRIPT_DIR/scripts/pipeline_helpers.sh"
 
 PIPELINE_DIR="$MAIN_DIR/.pipeline"
 MARKER="$PIPELINE_DIR/05_step6_done"
@@ -95,13 +96,9 @@ for tutorial_name in $tutorial_names; do
     
     echo "Notebook Content:" >> "$agent_input_file"
     cat "$preprocessed_nb_path" >> "$agent_input_file"
-    
-    # Run Claude
-    # We use a large context model
-    claude --model claude-sonnet-4-20250514 \
-      --output-format json \
-      --dangerously-skip-permissions \
-      -p - < "$agent_input_file" > "$agent_output_file"
+
+    # Run via provider-agnostic pipeline agent
+    run_pipeline_agent "$agent_input_file" "$agent_output_file"
       
     # Validate and Append to CSV
     python3 "$EXTRACTOR_SCRIPT" \
