@@ -57,13 +57,17 @@ export gap_report_path="$GAP_REPORT"
 NPX_BIN="$(resolve_cli npx 2>/dev/null || echo "")"
 if [[ -n "$NPX_BIN" ]]; then
   PAPER_ANALYSIS=""
-  for candidate in \
-    "$MAIN_DIR/reports/paper-analysis.json" \
-    "$MAIN_DIR/../.paper2agent/jobs/*/paper-analysis.json"; do
-    if [[ -f "$candidate" ]]; then
-      PAPER_ANALYSIS="$candidate"
-      break
-    fi
+  if [[ -f "$MAIN_DIR/reports/paper-analysis.json" ]]; then
+    PAPER_ANALYSIS="$MAIN_DIR/reports/paper-analysis.json"
+  else
+    # Search jobs directory (unquoted glob for expansion)
+    # shellcheck disable=SC2231
+    for candidate in "$MAIN_DIR"/../.paper2agent/jobs/*/paper-analysis.json; do
+      if [[ -f "$candidate" ]]; then
+        PAPER_ANALYSIS="$candidate"
+        break
+      fi
+    done
   done
   echo "05: step 9 - acquiring datasets..." >&2
   "$NPX_BIN" tsx "$SCRIPT_DIR/scripts/acquire-datasets.ts" \

@@ -29,14 +29,18 @@ fi
 
 # Check if paper analysis exists (needed for capabilities and reported_results)
 PAPER_ANALYSIS=""
-for candidate in \
-  "$MAIN_DIR/reports/paper-analysis.json" \
-  "$MAIN_DIR/../.paper2agent/jobs/*/paper-analysis.json"; do
-  if [[ -f "$candidate" ]]; then
-    PAPER_ANALYSIS="$candidate"
-    break
-  fi
-done
+if [[ -f "$MAIN_DIR/reports/paper-analysis.json" ]]; then
+  PAPER_ANALYSIS="$MAIN_DIR/reports/paper-analysis.json"
+else
+  # Search jobs directory for paper-analysis.json (unquoted glob for expansion)
+  # shellcheck disable=SC2231
+  for candidate in "$MAIN_DIR"/../.paper2agent/jobs/*/paper-analysis.json; do
+    if [[ -f "$candidate" ]]; then
+      PAPER_ANALYSIS="$candidate"
+      break
+    fi
+  done
+fi
 
 # Check what tools were extracted
 TOOLS_DIR="$MAIN_DIR/src/tools"
