@@ -75,32 +75,37 @@ async function main() {
     const solution = allSolutions[i];
     process.stdout.write(`status: Trying solution ${i + 1}/${allSolutions.length}: ${solution.strategy}\n`);
 
-    // Execute the solution's actions
+    // Execute the solution's actions and track actual success/failure
+    let allActionsSucceeded = true;
+    const actionResults: string[] = [];
+
     for (const action of solution.actions) {
-      if (action.startsWith("pip install") || action.startsWith("pip cache") || action.startsWith("source")) {
+      if (action.startsWith("pip install") || action.startsWith("pip cache") || action.startsWith("source") || action.startsWith("find ") || action.startsWith("rm ") || action.startsWith("export ") || action.startsWith("sleep ")) {
         // Execute shell commands
         const result = await executeShellCommand(action, mainDir);
-        process.stdout.write(`status:   ${action} → ${result.success ? "OK" : "FAILED: " + result.error}\n`);
+        actionResults.push(`${action} → ${result.success ? "OK" : "FAILED: " + result.error}`);
+        if (!result.success) {
+          allActionsSucceeded = false;
+        }
       } else {
-        process.stdout.write(`status:   ${action}\n`);
+        actionResults.push(`Code change (needs manual verification): ${action}`);
       }
     }
 
-    // Record outcome
+    // Record outcome based on ACTUAL execution results, not assumed success
     await recordHealingOutcome(
       `${stepName}-${diagnosis.category}`,
       diagnosis.category,
       solution,
-      true // Mark as success since we applied the fix
+      allActionsSucceeded
     );
 
     anyAttempted = true;
-    process.stdout.write(`status: Solution ${i + 1} applied successfully\n`);
+    process.stdout.write(`status: Solution ${i + 1}/${allSolutions.length} applied — ${allActionsSucceeded ? "OK" : "PARTIAL"}\n`);
+    actionResults.forEach(r => process.stdout.write(`status:   ${r}\n`));
 
-    // If this was a missing dependency fix, we can consider it a healing success
-    if (solution.strategy.toLowerCase().includes("install") ||
-        solution.strategy.toLowerCase().includes("fix pythonpath") ||
-        solution.strategy.toLowerCase().includes("free disk")) {
+    // If all actions succeeded, consider it a healing success
+    if (allActionsSucceeded) {
       process.stdout.write("HEALING_SUCCESS\n");
       return;
     }
