@@ -42,3 +42,80 @@ Whether a paper has an existing codebase with missing tools, or requires writing
 
 ---
 
+
+## 📐 Architecture & Execution Flow
+
+Paper2Agent Studio operates on a unified agentic feedback loop:
+
+```mermaid
+graph TD
+    A[Paper Intake: PDF / URL] --> B[Paper Analyzer & Repo Inference]
+    B --> C{Coverage Score Assessment}
+    C -->|Score >= 0.7| D[Tutorial Track: Steps 1-7]
+    C -->|Score < 0.3| E[Implementation Track: Steps 8-12]
+    C -->|0.3 <= Score < 0.7| F[Hybrid Execution]
+    
+    D --> G[Extract Tools & Wrap MCP]
+    E --> H[Gap Analysis & Paper Coder]
+    
+    H --> I[Experiment Runner in Sandbox]
+    I --> J[Results Comparator & Registry]
+    J --> K{Verification Metrics Match?}
+    
+    K -->|No: Iterate| L[Fix Loop: Max 3 Retries]
+    L --> I
+    K -->|Yes / Maxed| M[MCP Re-wrap: Step 13]
+    
+    F --> D
+    F --> E
+    G --> N[Evaluated Workspace]
+    M --> N
+    
+    %% Self Healing Loop
+    I -.->|Failure Detected| O[Self-Healing Recovery]
+    O -.->|Apply Solution| I
+```
+
+---
+
+## ⚡ Quick Start
+
+### 📋 Prerequisites
+
+Ensure you have the following installed on your local machine:
+- **Node.js** 20+
+- **Python** 3.10+
+- **Docker** (optional, recommended for sandboxed execution)
+- **Claude CLI** (installed and authenticated)
+
+### ⚙️ Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ashishpatill/Paper2Agent.git
+   cd Paper2Agent
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env.local
+   ```
+   *Note: API keys can also be configured directly and securely in the web application UI.*
+
+### 🖥️ Running the Studio
+
+Start the local Next.js development server:
+```bash
+./run-app.sh dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to launch the studio dashboard!
+
+---
+
