@@ -6,7 +6,9 @@ import { normalizeGeminiModel } from "./llm";
 import type { SecretsSummary, StoredSecrets } from "./types";
 import { configure as configureLangfuse } from "./langfuse";
 
-const secretsFile = path.join(localRoot, "secrets.json");
+function getSecretsFile() {
+  return process.env.TEST_SECRETS_FILE || path.join(localRoot, "secrets.json");
+}
 
 const DEFAULT_GEMINI_MODEL = normalizeGeminiModel(process.env.GEMINI_MODEL);
 const DEFAULT_OPENROUTER_MODEL =
@@ -14,7 +16,7 @@ const DEFAULT_OPENROUTER_MODEL =
 
 export async function loadSecrets(): Promise<StoredSecrets> {
   await ensureAppDirectories();
-  const stored = await readJsonFile<StoredSecrets>(secretsFile, {});
+  const stored = await readJsonFile<StoredSecrets>(getSecretsFile(), {});
 
   const secrets = {
     ...stored,
@@ -60,8 +62,8 @@ export async function saveSecrets(nextSecrets: Partial<StoredSecrets>) {
     delete merged.openrouterApiKey;
   }
 
-  await writeJsonFile(secretsFile, merged);
-  await chmod(secretsFile, 0o600).catch(() => undefined);
+  await writeJsonFile(getSecretsFile(), merged);
+  await chmod(getSecretsFile(), 0o600).catch(() => undefined);
 }
 
 export async function getSecretsSummary(): Promise<SecretsSummary> {
