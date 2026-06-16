@@ -81,17 +81,19 @@ export function chooseProvider(secrets: StoredSecrets) {
  * Returns all available providers in priority order (preferred first, then fallback).
  * Enables automatic failover when the primary provider is unavailable or fails.
  */
-export function getProviderOrder(secrets: StoredSecrets): Array<{ provider: Provider; model: string; apiKey: string }> {
-  const providers: Array<{ provider: Provider; model: string; apiKey: string }> = [];
+export function getProviderOrder(secrets: StoredSecrets): Array<{ provider: Provider; model: string; apiKey?: string }> {
+  const providers: Array<{ provider: Provider; model: string; apiKey?: string }> = [];
   const seen = new Set<Provider>();
 
   function addProvider(provider: Provider, apiKey: string | undefined, model: string | undefined) {
-    if (apiKey && !seen.has(provider)) {
+    const envKey = provider === "gemini" ? process.env.GEMINI_API_KEY : process.env.OPENROUTER_API_KEY;
+    const hasKey = apiKey || envKey;
+    if (hasKey && !seen.has(provider)) {
       seen.add(provider);
       providers.push({
         provider,
         model: provider === "gemini" ? normalizeGeminiModel(model) : (model || "openai/gpt-5.2-mini"),
-        apiKey
+        apiKey: apiKey || envKey || undefined
       });
     }
   }
@@ -174,7 +176,7 @@ export async function analyzePaperWithFailover(options: {
 export async function analyzePaper(options: {
   provider: Provider;
   model: string;
-  apiKey: string;
+  apiKey?: string;
   sourceText: string;
   titleHint?: string;
   repositoryUrlHint?: string;
@@ -202,12 +204,13 @@ export async function analyzePaper(options: {
   let rawText = "";
 
   if (options.provider === "gemini") {
-    const client = new GoogleGenAI({ apiKey: options.apiKey });
+    const clientOptions = options.apiKey ? { apiKey: options.apiKey } : undefined;
+    const client = new GoogleGenAI(clientOptions);
     const response = await generateGeminiContent(client, options.model, `${SYSTEM_PROMPT}\n\n${prompt}`);
     rawText = response.text || "";
   } else {
     const client = new OpenAI({
-      apiKey: options.apiKey,
+      ...(options.apiKey ? { apiKey: options.apiKey } : {}),
       baseURL: "https://openrouter.ai/api/v1"
     });
     const response = await client.chat.completions.create({
