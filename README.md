@@ -7,9 +7,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ashishpatill/Paper2Agent/stargazers"><img src="https://img.shields.io/github/stars/ashishpatill/Paper2Agent?style=for-the-badge&color=gold" alt="GitHub Stars"/></a>
-  <a href="https://github.com/ashishpatill/Paper2Agent/network/members"><img src="https://img.shields.io/github/forks/ashishpatill/Paper2Agent?style=for-the-badge&color=blue" alt="GitHub Forks"/></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/ashishpatill/Paper2Agent?style=for-the-badge&color=green" alt="MIT License"/></a>
+  <a href="https://github.com/ashishpatill/Paper2Agent/stargazers"><img src="https://img.shields.io/badge/Stars-⭐️-gold?style=for-the-badge" alt="GitHub Stars"/></a>
+  <a href="https://github.com/ashishpatill/Paper2Agent/network/members"><img src="https://img.shields.io/badge/Forks-🍴-blue?style=for-the-badge" alt="GitHub Forks"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License"/></a>
   <br/>
   <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js"/></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/></a>
