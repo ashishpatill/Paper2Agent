@@ -27,7 +27,6 @@ Whether a paper has an existing codebase with missing tools, or requires writing
 
 ---
 
-
 ## 🚀 Key Features
 
 | Feature | Description |
@@ -41,7 +40,6 @@ Whether a paper has an existing codebase with missing tools, or requires writing
 | 🔍 **Anti-Fabrication Registry** | A verification ledger that traces every reported metric directly to execution artifacts to prevent LLM metric hallucination. |
 
 ---
-
 
 ## 📐 Architecture & Execution Flow
 
@@ -119,3 +117,67 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to launch th
 
 ---
 
+## 🛠️ CLI Command Reference
+
+If you prefer to orchestrate jobs, run validations, or set up tools using the terminal, the following scripts are available:
+
+| Command | Description |
+| :--- | :--- |
+| `npm run dev` | Starts the Next.js development server. |
+| `npm run build` | Builds the Next.js application for production. |
+| `npm run lint` | Lints the codebase. |
+| `npm run job:run -- <job-id>` | Triggers a paper replication job from the background worker. |
+| `npm run job:validate -- <workspace-path> [repo-name]` | Runs verification and assesses a finished workspace. |
+| `bash Paper2Agent.sh --project_dir <dir> --github_url <repo>` | Runs the raw orchestration pipeline. |
+| `bash scripts/install-codex-skills.sh` | Installs Codex skill packs. |
+| `bash scripts/setup-ai-tooling.sh` | Configures the local Claude agent environments. |
+| `bash scripts/check-publish-safety.sh` | Audits the repository to prevent pushing local runtime files. |
+
+---
+
+## 📂 Output Workspace Structure
+
+A successful run creates a workspace containing evaluated models, tools, and execution artifacts under `.paper2agent/workspaces/<project>-<job-id>/`:
+
+```text
+├── src/
+│   ├── <repo_name>_mcp.py     # Wrap of the extracted/implemented capabilities
+│   ├── tools/                 # Extracted CLI and codebase tools
+│   └── experiments/           # Sandboxed replication scripts
+├── tests/                     # Validation test suite
+├── reports/                   # Performance and replication reports
+├── repo/                      # Clean clone of the target repository
+├── claude_outputs/            # Full logs and prompts from Claude Code execution
+└── <repo_name>-env/           # Virtual environment containing dependencies
+```
+
+---
+
+## 🔒 Safety & Hygiene Guardrails
+
+Paper2Agent Studio takes local execution safety seriously:
+- **Sandbox Isolation:** All experiments run in a resource-capped environment to prevent malicious scripts, infinite loops, or disk fills.
+- **Publish Safety:** Sensitive runtime data, uploaded PDFs, workspaces, and `.env.local` keys are protected. Run `bash scripts/check-publish-safety.sh` before pushes.
+
+---
+
+## 🤝 Attribution & Upstream
+
+This project is a productized extension of the original **[jmiao24/Paper2Agent](https://github.com/jmiao24/Paper2Agent)** developed by Jiacheng Miao and contributors.
+
+*   **Upstream Repository:** [jmiao24/Paper2Agent](https://github.com/jmiao24/Paper2Agent)
+*   **Upstream License:** MIT
+
+Paper2Agent Studio preserves the core research pipeline and agents from upstream while wrapping them in a persistent, production-grade application layer.
+
+---
+
+## 📄 License
+
+This project is open-source and licensed under the [MIT License](LICENSE).
+
+---
+
+<p align="center">
+  Give Paper2Agent Studio a ⭐️ if you find it useful for your AI research and agent engineering workflows!
+</p>
