@@ -19,8 +19,16 @@ const TEST_SECRETS_FILE = path.join(
   "local",
   `test-secrets-${process.pid}.json`
 );
+process.env.TEST_SECRETS_FILE = TEST_SECRETS_FILE;
 
 describe("secrets module", () => {
+  beforeEach(async () => {
+    await rm(TEST_SECRETS_FILE, { force: true }).catch(() => {});
+  });
+
+  afterEach(async () => {
+    await rm(TEST_SECRETS_FILE, { force: true }).catch(() => {});
+  });
   it("loads empty secrets when no file exists", async () => {
     const secrets = await loadSecrets();
     assert.equal(secrets.preferredProvider, "gemini");
