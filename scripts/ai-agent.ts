@@ -31,12 +31,8 @@ const MAX_TOKENS_APPROX = 800_000; // trim if total message tokens exceed this
 const MAX_OUTPUT_TOKENS = 32_768; // generous output for complex pipeline steps
 const BASH_OUTPUT_LIMIT = 16_384; // increased from 8K for richer tool output
 
-if (!API_KEY) {
-  writeResult(true, "AGENT_API_KEY is not set");
-  process.exit(1);
-}
-
-const client = new OpenAI({ baseURL: BASE_URL, apiKey: API_KEY });
+// Allow running without AGENT_API_KEY if we want fallback to OpenAI's standard environment variables (like OPENAI_API_KEY)
+const client = new OpenAI(API_KEY ? { baseURL: BASE_URL, apiKey: API_KEY } : { baseURL: BASE_URL });
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
