@@ -379,3 +379,202 @@ export interface WorkspaceAssessment {
   requirements: string[];
   setup: SetupReadiness;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Phase 8: Auto Mode & Self-Adapting Loop
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Unified Failure Category (source of truth) ──────────────────────────────
+
+export type FailureCategory =
+  | "missing_dependency"
+  | "import_error"
+  | "runtime_error"
+  | "resource_error"
+  | "network_error"
+  | "nan_or_inf"
+  | "timeout"
+  | "metric_saturation"
+  | "logic"
+  | "configuration"
+  | "clarification_error"
+  | "template_contamination"
+  | "unknown";
+
+// ─── User Intent Detection ────────────────────────────────────────────────────
+
+export type ImplementationMode = "lite" | "deep";
+
+export interface ImplementationIntent {
+  mode: ImplementationMode;
+  userSpecified: boolean;
+  constraints?: string[];
+  detectedKeywords: string[];
+}
+
+// ─── Self-Adapting Loop ───────────────────────────────────────────────────────
+
+export type ExecutionTier = "initial" | "refine" | "pivot" | "scope_reduce";
+
+export interface SelfAdaptingLoopState {
+  iteration: number;
+  maxIterations: number;
+  pivotCount: number;
+  maxPivots: number;
+  tier: ExecutionTier;
+  bestScore: number;
+  consecutiveNonImproving: number;
+  maxConsecutiveNonImproving: number;
+  minCompletionRate: number;
+  matchThreshold: number;
+  history: SelfAdaptingIteration[];
+  converged: boolean;
+  convergenceReason?: string;
+  startedAt: string;
+  updatedAt: string;
+}
+
+export interface SelfAdaptingIteration {
+  iterationNumber: number;
+  tier: ExecutionTier;
+  timestamp: string;
+  score: number;
+  diagnosis?: FailureCategory;
+  action: "proceed" | "refine" | "pivot" | "scope_reduce" | "converged" | "stop";
+  experimentStatus: "success" | "partial" | "failed" | "crashed" | "timed_out";
+  metrics: Record<string, number | string>;
+  improvements: string[];
+  durationSeconds?: number;
+}
+
+// ─── Parallel Agent Brainstorming ─────────────────────────────────────────────
+
+export type AgentStrategy = "scope-reduction" | "alternative-approach" | "minimal-proof";
+
+export interface AgentProposal {
+  id: string;
+  strategy: AgentStrategy;
+  plan: string;
+  estimatedComplexity: "low" | "medium" | "high";
+  estimatedTimeMinutes: number;
+  estimatedComputeCost: string;
+  coveredClaims: string[];
+  excludedClaims: string[];
+  scoreBreakdown: {
+    feasibility: number;
+    resourceCost: number;
+    alignment: number;
+  };
+  totalScore: number;
+}
+
+// ─── NaN / Divergence Sentinel ────────────────────────────────────────────────
+
+export interface NaNDetectionResult {
+  detected: boolean;
+  step?: string;
+  metric?: string;
+  tensorShape?: string;
+  suggestedFix: string;
+}
+
+// ─── Scope Reduction ──────────────────────────────────────────────────────────
+
+export interface ScopeReduction {
+  applied: boolean;
+  reason: string;
+  changes: {
+    epochs?: { from: number; to: number };
+    conditions?: { from: number; to: number };
+    batchSize?: { from: number; to: number };
+    datasetFraction?: number;
+  };
+}
+
+// ─── Lite Plan (Pre-Flight Scope Analysis) ────────────────────────────────────
+
+export interface ComplexityEstimate {
+  totalExperiments: number;
+  requiredDatasets: string[];
+  estimatedGpuHours: number;
+  estimatedRunTimeMinutes: number;
+  riskFactors: string[];
+  novelComponents: number;
+  standardComponents: number;
+}
+
+export interface LitePlan {
+  description: string;
+  coveredClaims: string[];
+  excludedClaims: string[];
+  estimatedTimeMinutes: number;
+  estimatedComputeCost: string;
+  maxExperiments: number;
+  maxEpochs: number;
+  maxConditions: number;
+  allowSyntheticData: boolean;
+  requireGpu: boolean;
+}
+
+export interface ImplementationPlan {
+  mode: ImplementationMode;
+  userRequestedMode: ImplementationMode | null;
+  complexityEstimate: ComplexityEstimate;
+  litePlan: LitePlan;
+  recommendation: string;
+  generatedAt: string;
+}
+
+// ─── Phase 8 Job Config Extension ────────────────────────────────────────────
+
+export interface Phase8JobConfig {
+  implementationMode: ImplementationMode;
+  litePlan: {
+    maxExperiments: number;
+    maxEpochs: number;
+    maxConditions: number;
+    allowSyntheticData: boolean;
+    requireGpu: boolean;
+  };
+  deepPlan: {
+    maxExperiments: number | null;
+    maxEpochs: number | null;
+    maxConditions: number | null;
+    allowSyntheticData: boolean;
+    requireGpu: boolean;
+  };
+  selfAdaptingLoop: {
+    maxIterations: number;
+    maxPivots: number;
+    maxParallelAgents: number;
+    parallelAgentTimeoutSeconds: number;
+    minCompletionRate: number;
+    matchThreshold: number;
+  };
+}
+
+export const DEFAULT_PHASE8_CONFIG: Phase8JobConfig = {
+  implementationMode: "lite",
+  litePlan: {
+    maxExperiments: 2,
+    maxEpochs: 10,
+    maxConditions: 3,
+    allowSyntheticData: true,
+    requireGpu: false
+  },
+  deepPlan: {
+    maxExperiments: null,
+    maxEpochs: null,
+    maxConditions: null,
+    allowSyntheticData: false,
+    requireGpu: true
+  },
+  selfAdaptingLoop: {
+    maxIterations: 5,
+    maxPivots: 2,
+    maxParallelAgents: 3,
+    parallelAgentTimeoutSeconds: 300,
+    minCompletionRate: 0.5,
+    matchThreshold: 0.8
+  }
+};
